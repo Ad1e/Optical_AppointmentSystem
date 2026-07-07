@@ -1,5 +1,6 @@
 // Simulated Database Layer for Optical Clinic System
 // Backed by localStorage to persist data across page reloads.
+import { CLINIC_CONFIG } from './config';
 
 const LOCAL_STORAGE_KEY = 'optical_clinic_db_v1';
 
@@ -289,13 +290,14 @@ export const addAppointment = (appointment) => {
     throw new Error(check.reason);
   }
 
-  // Define end_time (30 minutes duration by default)
+  // Define end_time (dynamic duration based on config settings)
   const [hours, minutes] = appointment.start_time.split(':').map(Number);
-  let endMin = minutes + 30;
+  let endMin = minutes + CLINIC_CONFIG.scheduling.slotDurationMinutes;
   let endHour = hours;
   if (endMin >= 60) {
-    endMin -= 60;
-    endHour += 1;
+    const hoursAdded = Math.floor(endMin / 60);
+    endMin = endMin % 60;
+    endHour += hoursAdded;
   }
   const end_time = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
 

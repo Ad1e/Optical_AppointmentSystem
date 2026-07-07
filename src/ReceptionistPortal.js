@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CLINIC_CONFIG } from './config';
 import { 
   getPatients, 
   getAppointments, 
@@ -77,12 +78,13 @@ export default function ReceptionistPortal({ onRefreshTrigger }) {
           break;
         }
 
-        // Advance by 30 mins
+        // Advance by slotDurationMinutes config setting
         let [h, m] = testTime.split(':').map(Number);
-        m += 30;
+        m += CLINIC_CONFIG.scheduling.slotDurationMinutes;
         if (m >= 60) {
-          m -= 60;
-          h += 1;
+          const hoursAdded = Math.floor(m / 60);
+          m = m % 60;
+          h += hoursAdded;
         }
         testTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CLINIC_CONFIG } from './config';
 import { 
   getPatients, 
   getAppointments, 
@@ -38,6 +39,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
   const [validityMonths, setValidityMonths] = useState('12');
   const [rxNotes, setRxNotes] = useState('');
   const [rxSuccess, setRxSuccess] = useState('');
+  const [rxError, setRxError] = useState('');
 
   // Override Form State
   const [overrideDate, setOverrideDate] = useState('');
@@ -93,25 +95,56 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
     setPd('63');
     setValidityMonths('12');
     setRxNotes('');
+    setRxError('');
   };
 
   const handleSubmitRx = (e) => {
     e.preventDefault();
     if (!selectedPatient) return;
+    setRxError('');
+
+    // SPH / CYL range verification helper
+    const validateRange = (val, limitType, label) => {
+      const limits = CLINIC_CONFIG.validationLimits[limitType];
+      if (limitType === 'cylinder' && (val.toUpperCase() === 'DS' || val.toUpperCase() === 'SPH')) {
+        return { valid: true, value: val.toUpperCase() };
+      }
+      const num = parseFloat(val);
+      if (isNaN(num)) {
+        return { valid: false, error: `${label} must be a valid decimal number.` };
+      }
+      if (num < limits.min || num > limits.max) {
+        return { valid: false, error: `${label} must be between ${limits.min} and ${limits.max}.` };
+      }
+      // Standardize to 2 decimal places
+      return { valid: true, value: num.toFixed(2) };
+    };
+
+    const odSphCheck = validateRange(odSphere, 'sphere', 'Right Eye SPH');
+    if (!odSphCheck.valid) { setRxError(odSphCheck.error); return; }
+    
+    const osSphCheck = validateRange(osSphere, 'sphere', 'Left Eye SPH');
+    if (!osSphCheck.valid) { setRxError(osSphCheck.error); return; }
+    
+    const odCylCheck = validateRange(odCylinder, 'cylinder', 'Right Eye CYL');
+    if (!odCylCheck.valid) { setRxError(odCylCheck.error); return; }
+    
+    const osCylCheck = validateRange(osCylinder, 'cylinder', 'Left Eye CYL');
+    if (!osCylCheck.valid) { setRxError(osCylCheck.error); return; }
 
     addPrescription({
       patient_id: selectedPatient.id,
       doctor_id: doctor.id,
       validity_months: parseInt(validityMonths),
-      od_sphere: odSphere,
-      od_cylinder: odCylinder,
-      od_axis: odAxis,
-      od_add: odAdd,
-      os_sphere: osSphere,
-      os_cylinder: osCylinder,
-      os_axis: osAxis,
-      os_add: osAdd,
-      pd: pd,
+      od_sphere: odSphCheck.value,
+      od_cylinder: odCylCheck.value,
+      od_axis: parseInt(odAxis),
+      od_add: parseFloat(odAdd || 0).toFixed(2),
+      os_sphere: osSphCheck.value,
+      os_cylinder: osCylCheck.value,
+      os_axis: parseInt(osAxis),
+      os_add: parseFloat(osAdd || 0).toFixed(2),
+      pd: parseInt(pd),
       notes: rxNotes
     });
 
@@ -292,6 +325,12 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
             </div>
           )}
 
+          {rxError && (
+            <div style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--error)', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem', fontWeight: 500 }}>
+              ⚠️ {rxError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmitRx} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
             {/* Right Eye Specs */}
@@ -310,7 +349,15 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
                 </div>
                 <div>
                   <label>Axis (°)</label>
-                  <input type="number" min="0" max="180" placeholder="180" value={odAxis} onChange={e => setOdAxis(e.target.value)} required />
+                  <input 
+                    type="number" 
+                    min={CLINIC_CONFIG.validationLimits.axis.min} 
+                    max={CLINIC_CONFIG.validationLimits.axis.max} 
+                    placeholder="180" 
+                    value={odAxis} 
+                    onChange={e => setOdAxis(e.target.value)} 
+                    required 
+                  />
                 </div>
                 <div>
                   <label>Add (ADD)</label>
@@ -335,7 +382,15 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
                 </div>
                 <div>
                   <label>Axis (°)</label>
-                  <input type="number" min="0" max="180" placeholder="0" value={osAxis} onChange={e => setOsAxis(e.target.value)} required />
+                  <input 
+                    type="number" 
+                    min={CLINIC_CONFIG.validationLimits.axis.min} 
+                    max={CLINIC_CONFIG.validationLimits.axis.max} 
+                    placeholder="0" 
+                    value={osAxis} 
+                    onChange={e => setOsAxis(e.target.value)} 
+                    required 
+                  />
                 </div>
                 <div>
                   <label>Add (ADD)</label>
@@ -348,14 +403,22 @@ export default function DoctorPortal({ doctor, onRefreshTrigger }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
               <div>
                 <label>Pupillary Distance (PD) - mm</label>
-                <input type="number" min="40" max="80" placeholder="63" value={pd} onChange={e => setPd(e.target.value)} required />
+                <input 
+                  type="number" 
+                  min={CLINIC_CONFIG.validationLimits.pd.min} 
+                  max={CLINIC_CONFIG.validationLimits.pd.max} 
+                  placeholder="63" 
+                  value={pd} 
+                  onChange={e => setPd(e.target.value)} 
+                  required 
+                />
               </div>
               <div>
                 <label>Prescription Validity Period</label>
                 <select value={validityMonths} onChange={e => setValidityMonths(e.target.value)}>
-                  <option value="6">6 Months</option>
-                  <option value="12">12 Months (1 Year)</option>
-                  <option value="24">24 Months (2 Years)</option>
+                  {CLINIC_CONFIG.validityPeriods.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

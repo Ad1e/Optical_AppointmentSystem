@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { CLINIC_CONFIG } from './config';
 import { 
   getDoctors, 
   getAppointments, 
@@ -68,12 +69,13 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
         reason: check.reason
       });
 
-      // Advance by 30 mins
+      // Advance by slotDurationMinutes config setting
       let [h, m] = current.split(':').map(Number);
-      m += 30;
+      m += CLINIC_CONFIG.scheduling.slotDurationMinutes;
       if (m >= 60) {
-        m -= 60;
-        h += 1;
+        const hoursAdded = Math.floor(m / 60);
+        m = m % 60;
+        h += hoursAdded;
       }
       current = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     }
@@ -251,32 +253,69 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                 </span>
               </div>
 
-              {/* Optical Prescription Table */}
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.95rem' }}>
+              {/* Optical Prescription Visual Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                {/* Right Eye (OD) */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+                  <div className="lens-diagram">OD</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>RIGHT EYE (OD)</p>
+                    <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                      {latestRx.od_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                    </p>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      Cyl: <strong>{latestRx.od_cylinder}</strong> • Axis: <strong>{latestRx.od_axis}°</strong>
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Add: {latestRx.od_add}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Left Eye (OS) */}
+                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+                  <div className="lens-diagram">OS</div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>LEFT EYE (OS)</p>
+                    <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                      {latestRx.os_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                    </p>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      Cyl: <strong>{latestRx.os_cylinder}</strong> • Axis: <strong>{latestRx.os_axis}°</strong>
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      Add: {latestRx.os_add}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detailed specs table (collapsible or neat layout) */}
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
                   <thead>
-                    <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '2px solid var(--border-color)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left' }}>Eye</th>
-                      <th style={{ padding: '10px' }}>Sphere (SPH)</th>
-                      <th style={{ padding: '10px' }}>Cylinder (CYL)</th>
-                      <th style={{ padding: '10px' }}>Axis</th>
-                      <th style={{ padding: '10px' }}>Add (ADD)</th>
+                    <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)' }}>
+                      <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Eye</th>
+                      <th style={{ padding: '10px', fontWeight: 600 }}>Sphere (SPH)</th>
+                      <th style={{ padding: '10px', fontWeight: 600 }}>Cylinder (CYL)</th>
+                      <th style={{ padding: '10px', fontWeight: 600 }}>Axis</th>
+                      <th style={{ padding: '10px', fontWeight: 600 }}>Add (ADD)</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px', fontWeight: 'bold', textAlign: 'left' }}>Right (OD)</td>
-                      <td style={{ padding: '12px' }}>{latestRx.od_sphere}</td>
-                      <td style={{ padding: '12px' }}>{latestRx.od_cylinder}</td>
-                      <td style={{ padding: '12px' }}>{latestRx.od_axis}°</td>
-                      <td style={{ padding: '12px' }}>{latestRx.od_add}</td>
+                      <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Right (OD)</td>
+                      <td style={{ padding: '10px' }}>{latestRx.od_sphere}</td>
+                      <td style={{ padding: '10px' }}>{latestRx.od_cylinder}</td>
+                      <td style={{ padding: '10px' }}>{latestRx.od_axis}°</td>
+                      <td style={{ padding: '10px' }}>{latestRx.od_add}</td>
                     </tr>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px', fontWeight: 'bold', textAlign: 'left' }}>Left (OS)</td>
-                      <td style={{ padding: '12px' }}>{latestRx.os_sphere}</td>
-                      <td style={{ padding: '12px' }}>{latestRx.os_cylinder}</td>
-                      <td style={{ padding: '12px' }}>{latestRx.os_axis}°</td>
-                      <td style={{ padding: '12px' }}>{latestRx.os_add}</td>
+                    <tr>
+                      <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Left (OS)</td>
+                      <td style={{ padding: '10px' }}>{latestRx.os_sphere}</td>
+                      <td style={{ padding: '10px' }}>{latestRx.os_cylinder}</td>
+                      <td style={{ padding: '10px' }}>{latestRx.os_axis}°</td>
+                      <td style={{ padding: '10px' }}>{latestRx.os_add}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -478,16 +517,53 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                         </div>
                       </div>
 
-                      {/* RX details table */}
-                      <div style={{ overflowX: 'auto' }}>
+                      {/* Optical Prescription Visual Cards */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                        {/* Right Eye (OD) */}
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+                          <div className="lens-diagram">OD</div>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>RIGHT EYE (OD)</p>
+                            <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                              {rx.od_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                            </p>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              Cyl: <strong>{rx.od_cylinder}</strong> • Axis: <strong>{rx.od_axis}°</strong>
+                            </p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              Add: {rx.od_add}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Left Eye (OS) */}
+                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+                          <div className="lens-diagram">OS</div>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>LEFT EYE (OS)</p>
+                            <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
+                              {rx.os_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                            </p>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                              Cyl: <strong>{rx.os_cylinder}</strong> • Axis: <strong>{rx.os_axis}°</strong>
+                            </p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              Add: {rx.os_add}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed specs table */}
+                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
                           <thead>
-                            <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '2px solid var(--border-color)' }}>
-                              <th style={{ padding: '8px', textAlign: 'left' }}>Eye</th>
-                              <th style={{ padding: '8px' }}>Sphere (SPH)</th>
-                              <th style={{ padding: '8px' }}>Cylinder (CYL)</th>
-                              <th style={{ padding: '8px' }}>Axis</th>
-                              <th style={{ padding: '8px' }}>Add (ADD)</th>
+                            <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)' }}>
+                              <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Eye</th>
+                              <th style={{ padding: '10px', fontWeight: 600 }}>Sphere (SPH)</th>
+                              <th style={{ padding: '10px', fontWeight: 600 }}>Cylinder (CYL)</th>
+                              <th style={{ padding: '10px', fontWeight: 600 }}>Axis</th>
+                              <th style={{ padding: '10px', fontWeight: 600 }}>Add (ADD)</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -498,7 +574,7 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                               <td style={{ padding: '10px' }}>{rx.od_axis}°</td>
                               <td style={{ padding: '10px' }}>{rx.od_add}</td>
                             </tr>
-                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <tr>
                               <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Left (OS)</td>
                               <td style={{ padding: '10px' }}>{rx.os_sphere}</td>
                               <td style={{ padding: '10px' }}>{rx.os_cylinder}</td>
