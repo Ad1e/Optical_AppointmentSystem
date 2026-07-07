@@ -8,6 +8,8 @@ import {
   checkSlotAvailability, 
   calculateNextCheckup 
 } from './db';
+import opticareBanner from './opticare_banner.png';
+import { Icons } from './Icons';
 
 export default function PatientPortal({ patient, onRefreshTrigger, activeTab, setActiveTab }) {
   const [doctors, setDoctors] = useState([]);
@@ -93,20 +95,17 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
       {activeTab === 'dashboard' && (
         <>
           {/* Welcome banner */}
-          <div className="card card-accent card-padded animate-fade-in" style={{ 
-            background: 'var(--accent-gradient-soft)',
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-              <div>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Welcome back, {patient.name.split(' ')[0]} 👋</h2>
-                <p style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.9rem' }}>
-                  Here's your eye care summary. Stay on top of your optical health.
-                </p>
-              </div>
-              <button className="btn-primary" onClick={() => setActiveTab('book')} style={{ padding: '10px 20px' }}>
-                📅 Book Appointment
+          <div className="card card-accent welcome-banner animate-fade-in">
+            <div className="welcome-banner-text">
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800 }}>Welcome back, {patient.name.split(' ')[0]} 👋</h2>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '6px', fontSize: '0.9rem', maxWidth: '500px' }}>
+                Your complete eye health summary is ready. You can review active checkups, view latest visual prescription history, or schedule a routine consultation with our optometrists.
+              </p>
+              <button className="btn-primary" onClick={() => setActiveTab('book')} style={{ padding: '10px 20px', marginTop: '16px' }}>
+                Book Appointment
               </button>
             </div>
+            <div className="welcome-banner-image" style={{ backgroundImage: `url(${opticareBanner})` }} />
           </div>
 
           {/* Stat Cards Row */}
@@ -114,7 +113,7 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
             
             {/* Next Appointment */}
             <div className="card stat-card animate-fade-in-delay-1">
-              <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>📅</div>
+              <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.Calendar /></div>
               <div className="stat-label">Next Appointment</div>
               {upcomingAppointment ? (
                 <>
@@ -136,9 +135,12 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
                 background: checkupStatus.color.includes('error') ? 'var(--error-bg)' : 
                   checkupStatus.color.includes('warning') ? 'var(--warning-bg)' : 'var(--success-bg)',
                 color: checkupStatus.color.includes('error') ? 'var(--error)' : 
-                  checkupStatus.color.includes('warning') ? 'var(--warning)' : 'var(--success)'
+                  checkupStatus.color.includes('warning') ? 'var(--warning)' : 'var(--success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                {checkupStatus.icon}
+                <Icons.Dashboard />
               </div>
               <div className="stat-label">Checkup Status</div>
               <span className={`badge ${checkupStatus.color}`} style={{ alignSelf: 'flex-start' }}>
@@ -153,7 +155,7 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
 
             {/* Total Prescriptions */}
             <div className="card stat-card animate-fade-in-delay-3">
-              <div className="stat-icon" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}>👓</div>
+              <div className="stat-icon" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.Glasses /></div>
               <div className="stat-label">Prescriptions on File</div>
               <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{prescriptions.length}</div>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>

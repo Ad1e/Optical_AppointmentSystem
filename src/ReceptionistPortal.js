@@ -9,6 +9,7 @@ import {
   updateAppointmentStatus,
   checkSlotAvailability 
 } from './db';
+import { Icons } from './Icons';
 
 export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setActiveTab }) {
   const [patients, setPatients] = useState([]);
@@ -106,29 +107,29 @@ export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setAct
               />
             </div>
             <button className="btn-primary" onClick={() => setActiveTab('walkin')} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              ➕ Register Walk-in
+              <span style={{ fontSize: '1.1rem', fontWeight: 800 }}>+</span> Register Walk-in
             </button>
           </div>
 
           {/* Stat Cards Row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
             <div className="card stat-card animate-fade-in">
-              <div className="stat-icon" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}>📅</div>
+              <div className="stat-icon" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.Calendar /></div>
               <div className="stat-label">Today's Bookings</div>
               <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{totalBookings}</div>
             </div>
             <div className="card stat-card animate-fade-in-delay-1">
-              <div className="stat-icon" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>🔔</div>
+              <div className="stat-icon" style={{ background: 'var(--warning-bg)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.Override /></div>
               <div className="stat-label">Checked In</div>
               <div className="stat-value" style={{ color: 'var(--warning)' }}>{checkedInCount}</div>
             </div>
             <div className="card stat-card animate-fade-in-delay-2">
-              <div className="stat-icon" style={{ background: 'var(--success-bg)', color: 'var(--success)' }}>✅</div>
+              <div className="stat-icon" style={{ background: 'var(--success-bg)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.WalkIn /></div>
               <div className="stat-label">Attended</div>
               <div className="stat-value" style={{ color: 'var(--success)' }}>{attendedCount}</div>
             </div>
             <div className="card stat-card animate-fade-in-delay-3">
-              <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>🩺</div>
+              <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icons.Stethoscope /></div>
               <div className="stat-label">Active Doctors</div>
               <div className="stat-value" style={{ color: 'var(--info)' }}>{activeDoctorsCount}</div>
             </div>

@@ -9,6 +9,7 @@ import {
   addPrescription, 
   updateAppointmentStatus 
 } from './db';
+import { Icons } from './Icons';
 
 export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setActiveTab }) {
   const [patients, setPatients] = useState([]);
@@ -141,7 +142,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
           />
           <div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 800 }}>{doctor.name}</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>🩺 {doctor.specialty}</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}><Icons.Stethoscope style={{ width: '15px', height: '15px' }} /> {doctor.specialty}</p>
           </div>
         </div>
       </div>
@@ -342,7 +343,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
               </div>
             ) : (
               <div className="empty-state">
-                <div className="empty-icon">📋</div>
+                <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><Icons.Override style={{ width: '48px', height: '48px' }} /></div>
                 <p>No blocked dates scheduled.</p>
               </div>
             )}

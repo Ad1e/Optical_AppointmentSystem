@@ -4,6 +4,7 @@ import { getPatients, getDoctors } from './db';
 import PatientPortal from './PatientPortal';
 import DoctorPortal from './DoctorPortal';
 import ReceptionistPortal from './ReceptionistPortal';
+import { Icons } from './Icons';
 
 function App() {
   const [theme, setTheme] = useState('dark');
@@ -47,17 +48,17 @@ function App() {
   // Navigation items per role
   const roleNav = {
     patient: [
-      { id: 'dashboard', icon: '🏠', label: 'Dashboard' },
-      { id: 'book', icon: '📅', label: 'Book Appointment' },
-      { id: 'prescriptions', icon: '👓', label: 'My Prescriptions' },
+      { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+      { id: 'book', icon: 'book', label: 'Book Appointment' },
+      { id: 'prescriptions', icon: 'prescriptions', label: 'My Prescriptions' },
     ],
     doctor: [
-      { id: 'appointments', icon: '🩺', label: 'Consultations' },
-      { id: 'overrides', icon: '📋', label: 'Schedule Overrides' },
+      { id: 'appointments', icon: 'appointments', label: 'Consultations' },
+      { id: 'overrides', icon: 'overrides', label: 'Schedule Overrides' },
     ],
     receptionist: [
-      { id: 'dashboard', icon: '📊', label: 'Daily Overview' },
-      { id: 'walkin', icon: '🚶', label: 'Register Walk-in' },
+      { id: 'dashboard', icon: 'dashboard', label: 'Daily Overview' },
+      { id: 'walkin', icon: 'walkin', label: 'Register Walk-in' },
     ],
   };
 
@@ -95,140 +96,118 @@ function App() {
   };
 
   return (
-    <div className="app-shell">
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      {/* ==================== SIDEBAR ==================== */}
-      <aside className="sidebar">
-        {/* Brand */}
-        <div className="sidebar-brand">
-          <div className="sidebar-brand-logo">
-            <div className="sidebar-brand-icon">👁️</div>
-            <h1>OptiCare</h1>
-          </div>
-          <p>Vision Center Portal</p>
-        </div>
-
-        {/* Role Switcher */}
-        <div className="sidebar-section-label">Simulation Mode</div>
-        <div className="sidebar-nav">
-          {['patient', 'doctor', 'receptionist'].map(r => (
-            <button
-              key={r}
-              className={`sidebar-nav-item ${role === r ? 'active' : ''}`}
-              onClick={() => setRole(r)}
-            >
-              <span className="nav-icon">
-                {r === 'patient' ? '👤' : r === 'doctor' ? '🩺' : '🏥'}
-              </span>
-              {r.charAt(0).toUpperCase() + r.slice(1)} View
-            </button>
-          ))}
-        </div>
-
-        {/* Portal Navigation */}
-        <div className="sidebar-section-label">Navigation</div>
-        <nav className="sidebar-nav">
-          {(roleNav[role] || []).map(item => (
-            <button
-              key={item.id}
-              className={`sidebar-nav-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Footer User Card */}
-        <div className="sidebar-footer">
-          {/* Context selector */}
-          {role === 'patient' && patients.length > 0 && (
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', marginBottom: '4px' }}>Active Patient</label>
-              <select 
-                value={activePatientId} 
-                onChange={e => setActivePatientId(e.target.value)}
-                style={{ 
-                  padding: '7px 10px', fontSize: '0.78rem', 
-                  background: 'rgba(255,255,255,0.06)', 
-                  border: '1px solid rgba(255,255,255,0.08)', 
-                  color: 'rgba(255,255,255,0.8)',
-                  borderRadius: '8px'
-                }}
-              >
-                {patients.map(p => (
-                  <option key={p.id} value={p.id} style={{ background: '#1a1f36', color: '#fff' }}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {role === 'doctor' && doctors.length > 0 && (
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', marginBottom: '4px' }}>Active Optometrist</label>
-              <select 
-                value={activeDoctorId} 
-                onChange={e => setActiveDoctorId(e.target.value)}
-                style={{ 
-                  padding: '7px 10px', fontSize: '0.78rem', 
-                  background: 'rgba(255,255,255,0.06)', 
-                  border: '1px solid rgba(255,255,255,0.08)', 
-                  color: 'rgba(255,255,255,0.8)',
-                  borderRadius: '8px'
-                }}
-              >
-                {doctors.map(d => (
-                  <option key={d.id} value={d.id} style={{ background: '#1a1f36', color: '#fff' }}>{d.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="sidebar-user-card">
-            <div className="sidebar-user-avatar">{getInitials(getCurrentUserName())}</div>
-            <div className="sidebar-user-info">
-              <div className="sidebar-user-name">{getCurrentUserName()}</div>
-              <div className="sidebar-user-role">{role}</div>
+      {/* ==================== TOP NAVIGATION BAR ==================== */}
+      <nav className="navbar">
+        <div className="navbar-container">
+          
+          {/* Logo & Brand */}
+          <div className="navbar-brand">
+            <div className="navbar-brand-logo">
+              <div className="navbar-brand-icon">
+                <Icons.Clinic />
+              </div>
+              <div>
+                <h1>OptiCare</h1>
+                <p>Vision Center</p>
+              </div>
             </div>
           </div>
-        </div>
-      </aside>
 
-      {/* ==================== MAIN CONTENT ==================== */}
+          {/* Navigation Tabs */}
+          <div className="navbar-nav">
+            {(roleNav[role] || []).map(item => (
+              <button
+                key={item.id}
+                className={`navbar-nav-item ${activeTab === item.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(item.id)}
+              >
+                {item.id === 'dashboard' && <Icons.Dashboard />}
+                {item.id === 'book' && <Icons.Calendar />}
+                {item.id === 'prescriptions' && <Icons.Glasses />}
+                {item.id === 'appointments' && <Icons.Stethoscope />}
+                {item.id === 'overrides' && <Icons.Override />}
+                {item.id === 'walkin' && <Icons.WalkIn />}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Controls & Mode Switches */}
+          <div className="navbar-controls">
+            
+            {/* Simulation Role Selector */}
+            <div className="navbar-selector">
+              <label>Role</label>
+              <select value={role} onChange={e => setRole(e.target.value)}>
+                <option value="patient">Patient</option>
+                <option value="doctor">Optometrist</option>
+                <option value="receptionist">Receptionist</option>
+              </select>
+            </div>
+
+            {/* Profile Dropdowns */}
+            {role === 'patient' && patients.length > 0 && (
+              <div className="navbar-selector">
+                <select value={activePatientId} onChange={e => setActivePatientId(e.target.value)}>
+                  {patients.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {role === 'doctor' && doctors.length > 0 && (
+              <div className="navbar-selector">
+                <select value={activeDoctorId} onChange={e => setActiveDoctorId(e.target.value)}>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Theme Toggle */}
+            <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
+              {theme === 'dark' ? <Icons.Sun style={{ color: 'var(--accent-tertiary)' }} /> : <Icons.Moon />}
+            </button>
+
+            {/* User Badge */}
+            <div className="navbar-user-card">
+              <div className="navbar-user-avatar">{getInitials(getCurrentUserName())}</div>
+              <div className="navbar-user-info" style={{ display: 'none' }}>
+                <span className="navbar-user-name">{getCurrentUserName()}</span>
+                <span className="navbar-user-role">{role}</span>
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </nav>
+
+      {/* ==================== MAIN CONTENT AREA ==================== */}
       <div className="main-content">
         
-        {/* Top Bar */}
-        <header className="top-bar">
-          <div className="top-bar-left">
-            <h2>{getPageTitle()}</h2>
-            <p>{getPageSubtitle()}</p>
-          </div>
-          <div className="top-bar-right">
-            <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
-              {theme === 'dark' ? '☀️' : '🌙'}
-            </button>
-            <div style={{ 
-              padding: '6px 14px', 
-              borderRadius: '8px', 
-              background: 'var(--success-bg)', 
-              color: 'var(--success)', 
-              fontSize: '0.72rem', 
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.04em',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }}></span>
-              Online
+        {/* Sub Header Section */}
+        <div style={{ 
+          background: 'var(--bg-secondary)', 
+          borderBottom: '1px solid var(--border-color)', 
+          padding: '20px 36px' 
+        }}>
+          <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{getPageTitle()}</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '2px' }}>{getPageSubtitle()}</p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span className="badge badge-success badge-dot">System Mock Active</span>
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Content Area */}
-        <main className="content-body">
+        {/* Content Body */}
+        <main className="content-body" style={{ maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
           {role === 'patient' && currentPatient ? (
             <PatientPortal 
               patient={currentPatient} 
@@ -252,15 +231,16 @@ function App() {
           ) : (
             <div className="empty-state">
               <div className="empty-icon">⏳</div>
-              <p>Loading workspace data...</p>
+              <p>Loading clinic workspace data...</p>
             </div>
           )}
         </main>
 
         {/* Footer */}
         <footer className="app-footer">
-          OptiCare Vision Center &copy; 2026 &mdash; Professional Optical Clinic Management System
+          OptiCare Vision Center &copy; 2026 &mdash; Medical Refraction Scheduling Platform
         </footer>
+
       </div>
     </div>
   );
