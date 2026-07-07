@@ -9,8 +9,7 @@ import {
   calculateNextCheckup 
 } from './db';
 
-export default function PatientPortal({ patient, onRefreshTrigger }) {
-  const [activeTab, setActiveTab] = useState('dashboard');
+export default function PatientPortal({ patient, onRefreshTrigger, activeTab, setActiveTab }) {
   const [doctors, setDoctors] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
@@ -23,323 +22,207 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
   const [bookingReason, setBookingReason] = useState('');
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
-
-  // Available timeslots cache
   const [availableSlots, setAvailableSlots] = useState([]);
 
   useEffect(() => {
     setDoctors(getDoctors());
-    // Filter to only this patient's data
     setAppointments(getAppointments().filter(a => a.patient_id === patient.id));
     setPrescriptions(getPrescriptions().filter(p => p.patient_id === patient.id));
-    
-    if (getDoctors().length > 0) {
-      setSelectedDoctorId(getDoctors()[0].id);
-    }
+    if (getDoctors().length > 0) setSelectedDoctorId(getDoctors()[0].id);
   }, [patient, activeTab]);
 
-  // Generate available timeslots when doctor or date changes
+  // Generate timeslots
   useEffect(() => {
-    if (!selectedDoctorId || !bookingDate) {
-      setAvailableSlots([]);
-      return;
-    }
-
+    if (!selectedDoctorId || !bookingDate) { setAvailableSlots([]); return; }
     const doc = doctors.find(d => d.id === selectedDoctorId);
     if (!doc) return;
-
     const dayOfWeek = new Date(bookingDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
     const hours = doc.working_hours[dayOfWeek];
+    if (!hours) { setAvailableSlots([]); return; }
 
-    if (!hours) {
-      setAvailableSlots([]);
-      return;
-    }
-
-    // Generate timeslots every 30 minutes
     const slots = [];
     let current = hours.start;
-    const end = hours.end;
-
-    while (current < end) {
+    while (current < hours.end) {
       const check = checkSlotAvailability(selectedDoctorId, bookingDate, current);
-      slots.push({
-        time: current,
-        available: check.available,
-        reason: check.reason
-      });
-
-      // Advance by slotDurationMinutes config setting
+      slots.push({ time: current, available: check.available, reason: check.reason });
       let [h, m] = current.split(':').map(Number);
       m += CLINIC_CONFIG.scheduling.slotDurationMinutes;
-      if (m >= 60) {
-        const hoursAdded = Math.floor(m / 60);
-        m = m % 60;
-        h += hoursAdded;
-      }
+      if (m >= 60) { const ha = Math.floor(m / 60); m = m % 60; h += ha; }
       current = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
     }
-
     setAvailableSlots(slots);
-    setSelectedTime(''); // Reset selection
+    setSelectedTime('');
   }, [selectedDoctorId, bookingDate, doctors]);
 
-  // Find next upcoming appointment
   const upcomingAppointment = appointments
     .filter(a => a.status === 'scheduled' || a.status === 'checked-in')
     .sort((a, b) => new Date(`${a.date}T${a.start_time}`) - new Date(`${b.date}T${b.start_time}`))[0];
 
-  // Find latest prescription
   const latestRx = prescriptions.sort((a, b) => new Date(b.date_issued) - new Date(a.date_issued))[0];
 
-  // Calculate next checkup status
-  let checkupStatus = { text: 'No prescription history', color: 'badge-info' };
+  let checkupStatus = { text: 'No prescription history', color: 'badge-info', icon: 'ℹ️' };
   if (latestRx) {
     const dueDateStr = calculateNextCheckup(latestRx.date_issued, latestRx.validity_months);
-    const dueDate = new Date(dueDateStr);
-    const today = new Date();
-    
-    const diffTime = dueDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      checkupStatus = { text: `Overdue (Due: ${dueDateStr})`, color: 'badge-error' };
-    } else if (diffDays <= 30) {
-      checkupStatus = { text: `Due Soon (Due: ${dueDateStr})`, color: 'badge-warning' };
-    } else {
-      checkupStatus = { text: `Up to date (Next checkup: ${dueDateStr})`, color: 'badge-success' };
-    }
+    const diffDays = Math.ceil((new Date(dueDateStr) - new Date()) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) checkupStatus = { text: `Overdue — Due: ${dueDateStr}`, color: 'badge-error badge-dot', icon: '🔴' };
+    else if (diffDays <= 30) checkupStatus = { text: `Due Soon — ${dueDateStr}`, color: 'badge-warning badge-dot', icon: '🟡' };
+    else checkupStatus = { text: `Up to date — Next: ${dueDateStr}`, color: 'badge-success badge-dot', icon: '🟢' };
   }
 
   const handleBooking = (e) => {
     e.preventDefault();
-    setBookingError('');
-    setBookingSuccess('');
-
-    if (!bookingDate || !selectedTime || !selectedDoctorId) {
-      setBookingError('Please fill out all booking fields.');
-      return;
-    }
-
+    setBookingError(''); setBookingSuccess('');
+    if (!bookingDate || !selectedTime || !selectedDoctorId) { setBookingError('Please fill out all booking fields.'); return; }
     try {
       addAppointment({
-        patient_id: patient.id,
-        doctor_id: selectedDoctorId,
-        date: bookingDate,
-        start_time: selectedTime,
-        type: bookingType,
-        reason: bookingReason
+        patient_id: patient.id, doctor_id: selectedDoctorId,
+        date: bookingDate, start_time: selectedTime, type: bookingType, reason: bookingReason
       });
-
       setBookingSuccess('Appointment booked successfully!');
-      setBookingReason('');
-      setBookingDate('');
-      setSelectedTime('');
-      onRefreshTrigger(); // trigger updates in parent UI
-      
-      // Navigate back to dashboard after 1.5s
-      setTimeout(() => {
-        setActiveTab('dashboard');
-        setBookingSuccess('');
-      }, 1500);
-    } catch (err) {
-      setBookingError(err.message || 'Failed to book slot.');
-    }
+      setBookingReason(''); setBookingDate(''); setSelectedTime('');
+      onRefreshTrigger();
+      setTimeout(() => { setActiveTab('dashboard'); setBookingSuccess(''); }, 1500);
+    } catch (err) { setBookingError(err.message || 'Failed to book slot.'); }
   };
 
+  // === RENDER ===
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Sub Header / Welcome */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h2 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Hello, {patient.name} 👋</h2>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>Welcome to your Patient Portal. Manage bookings and view optical records.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            className={`btn-secondary ${activeTab === 'dashboard' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-            style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-          >
-            Dashboard
-          </button>
-          <button 
-            className={`btn-secondary ${activeTab === 'book' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('book')}
-            style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-          >
-            Book Appointment
-          </button>
-          <button 
-            className={`btn-secondary ${activeTab === 'prescriptions' ? 'btn-primary' : ''}`}
-            onClick={() => setActiveTab('prescriptions')}
-            style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-          >
-            My Prescriptions
-          </button>
-        </div>
-      </div>
 
-      {/* DASHBOARD TAB */}
+      {/* =================== DASHBOARD TAB =================== */}
       {activeTab === 'dashboard' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Summary Status Badges */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            
-            {/* Appointment Card */}
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, color: 'var(--text-secondary)' }}>Next Appointment</span>
-                <span className="badge badge-success">Active</span>
+        <>
+          {/* Welcome banner */}
+          <div className="card card-accent card-padded animate-fade-in" style={{ 
+            background: 'var(--accent-gradient-soft)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+              <div>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800 }}>Welcome back, {patient.name.split(' ')[0]} 👋</h2>
+                <p style={{ color: 'var(--text-secondary)', marginTop: '4px', fontSize: '0.9rem' }}>
+                  Here's your eye care summary. Stay on top of your optical health.
+                </p>
               </div>
-              {upcomingAppointment ? (
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', marginBottom: '8px' }}>
-                    {doctors.find(d => d.id === upcomingAppointment.doctor_id)?.name || 'Optometrist'}
-                  </h3>
-                  <p style={{ fontSize: '0.95rem', fontWeight: 500 }}>
-                    📅 {upcomingAppointment.date} at {upcomingAppointment.start_time}
-                  </p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                    Reason: "{upcomingAppointment.reason}"
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-muted)', marginBottom: '8px' }}>No upcoming booking</h3>
-                  <button className="btn-primary" onClick={() => setActiveTab('book')} style={{ padding: '6px 12px', fontSize: '0.8rem', width: '100%', marginTop: '8px' }}>
-                    Book One Now
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Checkup status card */}
-            <div className="glass-panel" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 600, color: 'var(--text-secondary)' }}>Checkup Status</span>
-                <span className={`badge ${checkupStatus.color}`}>{checkupStatus.text}</span>
-              </div>
-              {latestRx ? (
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', marginBottom: '4px' }}>Prescription Validity</h3>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Last Issued: {latestRx.date_issued}
-                  </p>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                    Based on standard {latestRx.validity_months}-month prescription lifespan.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', color: 'var(--text-muted)' }}>No prescription</h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                    Book an appointment for an eye refraction checkup.
-                  </p>
-                </div>
-              )}
+              <button className="btn-primary" onClick={() => setActiveTab('book')} style={{ padding: '10px 20px' }}>
+                📅 Book Appointment
+              </button>
             </div>
           </div>
 
-          {/* Eye Prescription Quick Card */}
+          {/* Stat Cards Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+            
+            {/* Next Appointment */}
+            <div className="card stat-card animate-fade-in-delay-1">
+              <div className="stat-icon" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>📅</div>
+              <div className="stat-label">Next Appointment</div>
+              {upcomingAppointment ? (
+                <>
+                  <div className="stat-value" style={{ color: 'var(--info)', fontSize: '1.3rem' }}>
+                    {doctors.find(d => d.id === upcomingAppointment.doctor_id)?.name || 'Optometrist'}
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                    {upcomingAppointment.date} at {upcomingAppointment.start_time}
+                  </p>
+                </>
+              ) : (
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>No upcoming booking</p>
+              )}
+            </div>
+
+            {/* Checkup Status */}
+            <div className="card stat-card animate-fade-in-delay-2">
+              <div className="stat-icon" style={{ 
+                background: checkupStatus.color.includes('error') ? 'var(--error-bg)' : 
+                  checkupStatus.color.includes('warning') ? 'var(--warning-bg)' : 'var(--success-bg)',
+                color: checkupStatus.color.includes('error') ? 'var(--error)' : 
+                  checkupStatus.color.includes('warning') ? 'var(--warning)' : 'var(--success)'
+              }}>
+                {checkupStatus.icon}
+              </div>
+              <div className="stat-label">Checkup Status</div>
+              <span className={`badge ${checkupStatus.color}`} style={{ alignSelf: 'flex-start' }}>
+                {checkupStatus.text}
+              </span>
+              {latestRx && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Last issued: {latestRx.date_issued}
+                </p>
+              )}
+            </div>
+
+            {/* Total Prescriptions */}
+            <div className="card stat-card animate-fade-in-delay-3">
+              <div className="stat-icon" style={{ background: 'var(--accent-glow)', color: 'var(--accent-primary)' }}>👓</div>
+              <div className="stat-label">Prescriptions on File</div>
+              <div className="stat-value" style={{ color: 'var(--accent-primary)' }}>{prescriptions.length}</div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                {appointments.length} total appointments
+              </p>
+            </div>
+          </div>
+
+          {/* Latest Prescription Quick Card */}
           {latestRx && (
-            <div className="glass-panel animate-fade-in" style={{ padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                <h3 style={{ fontSize: '1.3rem' }}>Latest Prescription Specs</h3>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  Optometrist: {doctors.find(d => d.id === latestRx.doctor_id)?.name || 'Doctor'}
-                </span>
+            <div className="card card-padded animate-fade-in-delay-2">
+              <div className="section-header" style={{ paddingBottom: '16px', borderBottom: '1px solid var(--border-color)' }}>
+                <div>
+                  <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    Latest Prescription
+                    <span className="badge badge-success">Current</span>
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                    Prescribed by {doctors.find(d => d.id === latestRx.doctor_id)?.name || 'Optometrist'}
+                  </p>
+                </div>
+                <button className="btn-ghost" onClick={() => setActiveTab('prescriptions')}>
+                  View All →
+                </button>
               </div>
 
-              {/* Optical Prescription Visual Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-                {/* Right Eye (OD) */}
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '20px' }}>
+                {/* Right Eye */}
+                <div className="rx-eye-card">
                   <div className="lens-diagram">OD</div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>RIGHT EYE (OD)</p>
-                    <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                      {latestRx.od_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                    <p style={{ fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Right Eye (OD)</p>
+                    <p style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '4px', fontFamily: 'var(--font-display)' }}>
+                      {latestRx.od_sphere} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
                     </p>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Cyl: <strong>{latestRx.od_cylinder}</strong> • Axis: <strong>{latestRx.od_axis}°</strong>
-                    </p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Add: {latestRx.od_add}
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                      Cyl: <strong>{latestRx.od_cylinder}</strong> · Axis: <strong>{latestRx.od_axis}°</strong>
                     </p>
                   </div>
                 </div>
 
-                {/* Left Eye (OS) */}
-                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
+                {/* Left Eye */}
+                <div className="rx-eye-card">
                   <div className="lens-diagram">OS</div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>LEFT EYE (OS)</p>
-                    <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                      {latestRx.os_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                    <p style={{ fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Left Eye (OS)</p>
+                    <p style={{ fontSize: '1.3rem', fontWeight: 800, marginTop: '4px', fontFamily: 'var(--font-display)' }}>
+                      {latestRx.os_sphere} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
                     </p>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      Cyl: <strong>{latestRx.os_cylinder}</strong> • Axis: <strong>{latestRx.os_axis}°</strong>
-                    </p>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      Add: {latestRx.os_add}
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                      Cyl: <strong>{latestRx.os_cylinder}</strong> · Axis: <strong>{latestRx.os_axis}°</strong>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Detailed specs table (collapsible or neat layout) */}
-              <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)' }}>
-                      <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Eye</th>
-                      <th style={{ padding: '10px', fontWeight: 600 }}>Sphere (SPH)</th>
-                      <th style={{ padding: '10px', fontWeight: 600 }}>Cylinder (CYL)</th>
-                      <th style={{ padding: '10px', fontWeight: 600 }}>Axis</th>
-                      <th style={{ padding: '10px', fontWeight: 600 }}>Add (ADD)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Right (OD)</td>
-                      <td style={{ padding: '10px' }}>{latestRx.od_sphere}</td>
-                      <td style={{ padding: '10px' }}>{latestRx.od_cylinder}</td>
-                      <td style={{ padding: '10px' }}>{latestRx.od_axis}°</td>
-                      <td style={{ padding: '10px' }}>{latestRx.od_add}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Left (OS)</td>
-                      <td style={{ padding: '10px' }}>{latestRx.os_sphere}</td>
-                      <td style={{ padding: '10px' }}>{latestRx.os_cylinder}</td>
-                      <td style={{ padding: '10px' }}>{latestRx.os_axis}°</td>
-                      <td style={{ padding: '10px' }}>{latestRx.os_add}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', flexWrap: 'wrap', gap: '12px', fontSize: '0.9rem' }}>
-                <div>
-                  <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Pupillary Distance (PD): </span>
-                  <span>{latestRx.pd} mm</span>
-                </div>
-                {latestRx.notes && (
-                  <div style={{ width: '100%', fontStyle: 'italic', color: 'var(--text-secondary)', marginTop: '8px', borderTop: '1px dashed var(--border-color)', paddingTop: '8px' }}>
-                    *Notes: {latestRx.notes}
-                  </div>
-                )}
+              <div style={{ marginTop: '16px', padding: '12px 0 0', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                <span>PD: <strong>{latestRx.pd} mm</strong></span>
+                <span>Add OD: <strong>{latestRx.od_add}</strong></span>
+                <span>Add OS: <strong>{latestRx.os_add}</strong></span>
               </div>
             </div>
           )}
 
-          {/* Appointment History List */}
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h3 style={{ fontSize: '1.25rem', marginBottom: '16px' }}>Appointment History</h3>
+          {/* Appointment History */}
+          <div className="card card-padded">
+            <h3 className="section-title" style={{ marginBottom: '16px' }}>Appointment History</h3>
             {appointments.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {appointments
                   .sort((a, b) => new Date(b.date) - new Date(a.date))
                   .map(appt => {
@@ -350,12 +233,25 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                     if (appt.status === 'checked-in') badgeClass = 'badge-warning';
 
                     return (
-                      <div key={appt.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', flexWrap: 'wrap', gap: '8px' }}>
-                        <div>
-                          <p style={{ fontWeight: 600 }}>{doc?.name || 'Optometrist'}</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                            {appt.date} • {appt.start_time} • {appt.type.replace('_', ' ')}
-                          </p>
+                      <div key={appt.id} style={{ 
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                        padding: '14px 16px', borderRadius: 'var(--radius-md)', 
+                        border: '1px solid var(--border-color)', background: 'var(--bg-primary)',
+                        transition: 'all 0.15s ease', flexWrap: 'wrap', gap: '8px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ 
+                            width: '8px', height: '8px', borderRadius: '50%',
+                            background: appt.status === 'attended' ? 'var(--success)' : 
+                              appt.status === 'cancelled' ? 'var(--error)' : 'var(--info)',
+                            flexShrink: 0
+                          }} />
+                          <div>
+                            <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{doc?.name || 'Optometrist'}</p>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                              {appt.date} · {appt.start_time} · {appt.type.replace('_', ' ')}
+                            </p>
+                          </div>
                         </div>
                         <span className={`badge ${badgeClass}`}>{appt.status}</span>
                       </div>
@@ -363,57 +259,38 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                   })}
               </div>
             ) : (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No appointment history.</p>
+              <div className="empty-state">
+                <div className="empty-icon">📋</div>
+                <p>No appointment history yet.</p>
+              </div>
             )}
           </div>
-
-        </div>
+        </>
       )}
 
-      {/* BOOK APPOINTMENT TAB */}
+      {/* =================== BOOK APPOINTMENT TAB =================== */}
       {activeTab === 'book' && (
-        <div className="glass-panel animate-fade-in" style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-          <h3 style={{ fontSize: '1.4rem', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Book Appointment Slot</h3>
+        <div className="card card-accent card-padded animate-fade-in" style={{ maxWidth: '800px' }}>
+          <h3 className="section-title" style={{ marginBottom: '20px' }}>Book Appointment Slot</h3>
           
-          {bookingError && (
-            <div style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--error)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.9rem', fontWeight: 500 }}>
-              ⚠️ {bookingError}
-            </div>
-          )}
-
-          {bookingSuccess && (
-            <div style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--success)', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.9rem', fontWeight: 500 }}>
-              🎉 {bookingSuccess}
-            </div>
-          )}
+          {bookingError && <div className="alert alert-error" style={{ marginBottom: '16px' }}>⚠️ {bookingError}</div>}
+          {bookingSuccess && <div className="alert alert-success" style={{ marginBottom: '16px' }}>🎉 {bookingSuccess}</div>}
 
           <form onSubmit={handleBooking} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            
-            {/* Select Doctor */}
             <div>
               <label>Select Optometrist / Doctor</label>
               <select value={selectedDoctorId} onChange={e => setSelectedDoctorId(e.target.value)}>
                 {doctors.map(doc => (
-                  <option key={doc.id} value={doc.id}>
-                    {doc.name} - ({doc.specialty})
-                  </option>
+                  <option key={doc.id} value={doc.id}>{doc.name} — {doc.specialty}</option>
                 ))}
               </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              {/* Select Date */}
               <div>
-                <label>Select Appointment Date</label>
-                <input 
-                  type="date" 
-                  min={new Date().toISOString().split('T')[0]} 
-                  value={bookingDate} 
-                  onChange={e => setBookingDate(e.target.value)} 
-                />
+                <label>Appointment Date</label>
+                <input type="date" min={new Date().toISOString().split('T')[0]} value={bookingDate} onChange={e => setBookingDate(e.target.value)} />
               </div>
-
-              {/* Select Type */}
               <div>
                 <label>Appointment Type</label>
                 <select value={bookingType} onChange={e => setBookingType(e.target.value)}>
@@ -424,30 +301,21 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
               </div>
             </div>
 
-            {/* Select Time Slots (Grid) */}
             {bookingDate && (
               <div>
                 <label>Choose an Available Timeslot</label>
                 {availableSlots.length > 0 ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px', marginTop: '8px' }}>
+                  <div className="timeslot-grid" style={{ marginTop: '8px' }}>
                     {availableSlots.map(slot => (
                       <button
                         key={slot.time}
                         type="button"
                         disabled={!slot.available}
                         onClick={() => setSelectedTime(slot.time)}
-                        style={{
-                          padding: '10px',
-                          borderRadius: '8px',
-                          border: selectedTime === slot.time ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)',
-                          background: selectedTime === slot.time 
-                            ? 'var(--accent-glow)' 
-                            : slot.available ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
-                          color: slot.available ? 'var(--text-primary)' : 'var(--text-muted)',
-                          cursor: slot.available ? 'pointer' : 'not-allowed',
-                          fontSize: '0.85rem',
-                          opacity: slot.available ? 1 : 0.6
-                        }}
+                        className={`timeslot-btn ${
+                          selectedTime === slot.time ? 'selected' : 
+                          slot.available ? 'available' : 'taken'
+                        }`}
                         title={!slot.available ? slot.reason : 'Slot available'}
                       >
                         {slot.time}
@@ -456,13 +324,12 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
                   </div>
                 ) : (
                   <p style={{ color: 'var(--error)', fontSize: '0.85rem', marginTop: '6px', fontWeight: 500 }}>
-                    ❌ This doctor is not practicing/available on this day of the week. Please choose another date.
+                    Doctor is not available on this day. Choose another date.
                   </p>
                 )}
               </div>
             )}
 
-            {/* Visit Reason */}
             <div>
               <label>Reason for Visit</label>
               <textarea 
@@ -474,10 +341,9 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
             </div>
 
             <button 
-              type="submit" 
-              className="btn-primary" 
+              type="submit" className="btn-primary" 
               disabled={!selectedTime || !bookingDate} 
-              style={{ width: '100%', padding: '12px', marginTop: '10px', opacity: (!selectedTime || !bookingDate) ? 0.6 : 1 }}
+              style={{ width: '100%', padding: '13px', opacity: (!selectedTime || !bookingDate) ? 0.5 : 1 }}
             >
               Confirm Booking
             </button>
@@ -485,132 +351,109 @@ export default function PatientPortal({ patient, onRefreshTrigger }) {
         </div>
       )}
 
-      {/* PRESCRIPTIONS TAB */}
+      {/* =================== PRESCRIPTIONS TAB =================== */}
       {activeTab === 'prescriptions' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 style={{ fontSize: '1.4rem' }}>Optical Prescription History</h3>
+          <h3 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Optical Prescription History</h3>
           {prescriptions.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {prescriptions
-                .sort((a, b) => new Date(b.date_issued) - new Date(a.date_issued))
-                .map((rx, idx) => {
-                  const doc = doctors.find(d => d.id === rx.doctor_id);
-                  const isLatest = idx === 0;
+            prescriptions
+              .sort((a, b) => new Date(b.date_issued) - new Date(a.date_issued))
+              .map((rx, idx) => {
+                const doc = doctors.find(d => d.id === rx.doctor_id);
+                const isLatest = idx === 0;
 
-                  return (
-                    <div key={rx.id} className="glass-panel" style={{ padding: '24px', border: isLatest ? '2px solid var(--accent-primary)' : '1px solid var(--border-color)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                        <div>
-                          <h4 style={{ fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            Prescription Issued on {rx.date_issued}
-                            {isLatest && <span className="badge badge-success">Latest Specs</span>}
-                          </h4>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                            Prescribed by: {doc?.name || 'Optometrist'} ({doc?.specialty})
-                          </p>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600 }}>NEXT CHECKUP DUE:</span>
-                          <p style={{ fontWeight: 'bold', color: 'var(--accent-primary)' }}>
-                            {calculateNextCheckup(rx.date_issued, rx.validity_months)}
-                          </p>
-                        </div>
+                return (
+                  <div key={rx.id} className={`card card-padded animate-fade-in-delay-${Math.min(idx + 1, 3)}`} 
+                    style={{ border: isLatest ? '1.5px solid var(--accent-primary)' : undefined }}>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                          Issued: {rx.date_issued}
+                          {isLatest && <span className="badge badge-success">Latest</span>}
+                        </h4>
+                        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                          By: {doc?.name || 'Optometrist'} ({doc?.specialty})
+                        </p>
                       </div>
-
-                      {/* Optical Prescription Visual Cards */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-                        {/* Right Eye (OD) */}
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
-                          <div className="lens-diagram">OD</div>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>RIGHT EYE (OD)</p>
-                            <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                              {rx.od_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
-                            </p>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                              Cyl: <strong>{rx.od_cylinder}</strong> • Axis: <strong>{rx.od_axis}°</strong>
-                            </p>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              Add: {rx.od_add}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Left Eye (OS) */}
-                        <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', padding: '18px', display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-tertiary)' }}>
-                          <div className="lens-diagram">OS</div>
-                          <div style={{ flex: 1 }}>
-                            <p style={{ fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--text-secondary)', letterSpacing: '0.05em' }}>LEFT EYE (OS)</p>
-                            <p style={{ fontSize: '1.25rem', fontWeight: 700, marginTop: '4px', color: 'var(--text-primary)' }}>
-                              {rx.os_sphere} <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
-                            </p>
-                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                              Cyl: <strong>{rx.os_cylinder}</strong> • Axis: <strong>{rx.os_axis}°</strong>
-                            </p>
-                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                              Add: {rx.os_add}
-                            </p>
-                          </div>
-                        </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Next Checkup</span>
+                        <p style={{ fontWeight: 700, color: 'var(--accent-primary)', fontSize: '0.95rem' }}>
+                          {calculateNextCheckup(rx.date_issued, rx.validity_months)}
+                        </p>
                       </div>
-
-                      {/* Detailed specs table */}
-                      <div style={{ overflowX: 'auto', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '0.9rem' }}>
-                          <thead>
-                            <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-color)' }}>
-                              <th style={{ padding: '10px', textAlign: 'left', fontWeight: 600 }}>Eye</th>
-                              <th style={{ padding: '10px', fontWeight: 600 }}>Sphere (SPH)</th>
-                              <th style={{ padding: '10px', fontWeight: 600 }}>Cylinder (CYL)</th>
-                              <th style={{ padding: '10px', fontWeight: 600 }}>Axis</th>
-                              <th style={{ padding: '10px', fontWeight: 600 }}>Add (ADD)</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                              <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Right (OD)</td>
-                              <td style={{ padding: '10px' }}>{rx.od_sphere}</td>
-                              <td style={{ padding: '10px' }}>{rx.od_cylinder}</td>
-                              <td style={{ padding: '10px' }}>{rx.od_axis}°</td>
-                              <td style={{ padding: '10px' }}>{rx.od_add}</td>
-                            </tr>
-                            <tr>
-                              <td style={{ padding: '10px', fontWeight: 'bold', textAlign: 'left' }}>Left (OS)</td>
-                              <td style={{ padding: '10px' }}>{rx.os_sphere}</td>
-                              <td style={{ padding: '10px' }}>{rx.os_cylinder}</td>
-                              <td style={{ padding: '10px' }}>{rx.os_axis}°</td>
-                              <td style={{ padding: '10px' }}>{rx.os_add}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px', flexWrap: 'wrap', gap: '8px', fontSize: '0.9rem' }}>
-                        <div>
-                          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Pupillary Distance (PD): </span>
-                          <span>{rx.pd} mm</span>
-                        </div>
-                        <div>
-                          <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Validity Period: </span>
-                          <span>{rx.validity_months} months</span>
-                        </div>
-                      </div>
-
-                      {rx.notes && (
-                        <div style={{ marginTop: '12px', padding: '10px', background: 'var(--bg-tertiary)', borderRadius: '6px', fontSize: '0.85rem', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
-                          <strong>Notes:</strong> {rx.notes}
-                        </div>
-                      )}
                     </div>
-                  );
-                })}
-            </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                      <div className="rx-eye-card">
+                        <div className="lens-diagram">OD</div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Right Eye (OD)</p>
+                          <p style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '4px', fontFamily: 'var(--font-display)' }}>
+                            {rx.od_sphere} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                          </p>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            Cyl: <strong>{rx.od_cylinder}</strong> · Axis: <strong>{rx.od_axis}°</strong> · Add: {rx.od_add}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rx-eye-card">
+                        <div className="lens-diagram">OS</div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ fontWeight: 700, fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Left Eye (OS)</p>
+                          <p style={{ fontSize: '1.2rem', fontWeight: 800, marginTop: '4px', fontFamily: 'var(--font-display)' }}>
+                            {rx.os_sphere} <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>SPH</span>
+                          </p>
+                          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                            Cyl: <strong>{rx.os_cylinder}</strong> · Axis: <strong>{rx.os_axis}°</strong> · Add: {rx.os_add}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed specs table */}
+                    <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Eye</th><th>Sphere</th><th>Cylinder</th><th>Axis</th><th>Add</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td style={{ fontWeight: 600 }}>Right (OD)</td>
+                            <td>{rx.od_sphere}</td><td>{rx.od_cylinder}</td><td>{rx.od_axis}°</td><td>{rx.od_add}</td>
+                          </tr>
+                          <tr>
+                            <td style={{ fontWeight: 600 }}>Left (OS)</td>
+                            <td>{rx.os_sphere}</td><td>{rx.os_cylinder}</td><td>{rx.os_axis}°</td><td>{rx.os_add}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '14px', flexWrap: 'wrap', gap: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      <span>PD: <strong>{rx.pd} mm</strong></span>
+                      <span>Validity: <strong>{rx.validity_months} months</strong></span>
+                    </div>
+
+                    {rx.notes && (
+                      <div style={{ marginTop: '14px', padding: '12px 16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem', fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                        <strong>Notes:</strong> {rx.notes}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
           ) : (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No prescriptions found on record.</p>
+            <div className="card card-padded empty-state">
+              <div className="empty-icon">👓</div>
+              <p>No prescriptions found on record.</p>
+            </div>
           )}
         </div>
       )}
-
     </div>
   );
 }

@@ -7,15 +7,12 @@ import ReceptionistPortal from './ReceptionistPortal';
 
 function App() {
   const [theme, setTheme] = useState('dark');
-  const [role, setRole] = useState('patient'); // patient, doctor, receptionist
+  const [role, setRole] = useState('patient');
   
-  // Simulated Logged-in user context
   const [patients, setPatients] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [activePatientId, setActivePatientId] = useState('');
   const [activeDoctorId, setActiveDoctorId] = useState('');
-  
-  // Trigger component refresh when sub-components update db
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -23,17 +20,11 @@ function App() {
     const docs = getDoctors();
     setPatients(pats);
     setDoctors(docs);
-
-    if (pats.length > 0 && !activePatientId) {
-      setActivePatientId(pats[0].id);
-    }
-    if (docs.length > 0 && !activeDoctorId) {
-      setActiveDoctorId(docs[0].id);
-    }
+    if (pats.length > 0 && !activePatientId) setActivePatientId(pats[0].id);
+    if (docs.length > 0 && !activeDoctorId) setActiveDoctorId(docs[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
-  // Handle Theme Toggle
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
@@ -44,156 +35,233 @@ function App() {
     }
   };
 
-  // Run initial theme set
   useEffect(() => {
     document.body.classList.add('dark-theme');
   }, []);
 
-  const triggerRefresh = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
+  const triggerRefresh = () => setRefreshTrigger(prev => prev + 1);
 
   const currentPatient = patients.find(p => p.id === activePatientId);
   const currentDoctor = doctors.find(d => d.id === activeDoctorId);
 
+  // Navigation items per role
+  const roleNav = {
+    patient: [
+      { id: 'dashboard', icon: '🏠', label: 'Dashboard' },
+      { id: 'book', icon: '📅', label: 'Book Appointment' },
+      { id: 'prescriptions', icon: '👓', label: 'My Prescriptions' },
+    ],
+    doctor: [
+      { id: 'appointments', icon: '🩺', label: 'Consultations' },
+      { id: 'overrides', icon: '📋', label: 'Schedule Overrides' },
+    ],
+    receptionist: [
+      { id: 'dashboard', icon: '📊', label: 'Daily Overview' },
+      { id: 'walkin', icon: '🚶', label: 'Register Walk-in' },
+    ],
+  };
+
+  // Get active portal's tab state setter
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Reset tab when role changes
+  useEffect(() => {
+    const firstTab = roleNav[role]?.[0]?.id || 'dashboard';
+    setActiveTab(firstTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const getCurrentUserName = () => {
+    if (role === 'patient') return currentPatient?.name || 'Patient';
+    if (role === 'doctor') return currentDoctor?.name || 'Doctor';
+    return 'Front Desk Staff';
+  };
+
+  const getPageTitle = () => {
+    if (role === 'patient') return 'Patient Portal';
+    if (role === 'doctor') return 'Doctor Workspace';
+    return 'Reception Dashboard';
+  };
+
+  const getPageSubtitle = () => {
+    if (role === 'patient') return 'Manage your eye care appointments and records';
+    if (role === 'doctor') return 'Manage consultations and prescriptions';
+    return 'Front desk scheduling and patient management';
+  };
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-shell">
       
-      {/* Simulation Ribbon at Top */}
-      <div style={{ 
-        backgroundColor: 'var(--bg-tertiary)', 
-        borderBottom: '1px solid var(--border-color)', 
-        padding: '10px 20px', 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        flexWrap: 'wrap',
-        gap: '12px',
-        fontSize: '0.85rem',
-        zIndex: 50
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>⚙️ SIMULATION CONTROLS:</span>
-          <span style={{ color: 'var(--text-secondary)' }}>Act as Role:</span>
-          <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-            {['patient', 'doctor', 'receptionist'].map(r => (
-              <button
-                key={r}
-                onClick={() => setRole(r)}
-                style={{
-                  background: role === r ? 'var(--accent-primary)' : 'none',
-                  color: role === r ? '#ffffff' : 'var(--text-primary)',
-                  border: 'none',
-                  padding: '4px 10px',
-                  borderRadius: '4px',
-                  fontSize: '0.75rem',
-                  textTransform: 'capitalize',
-                  fontWeight: 600
-                }}
-              >
-                {r}
-              </button>
-            ))}
+      {/* ==================== SIDEBAR ==================== */}
+      <aside className="sidebar">
+        {/* Brand */}
+        <div className="sidebar-brand">
+          <div className="sidebar-brand-logo">
+            <div className="sidebar-brand-icon">👁️</div>
+            <h1>OptiCare</h1>
           </div>
+          <p>Vision Center Portal</p>
         </div>
 
-        {/* User Context Selector based on role */}
-        <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+        {/* Role Switcher */}
+        <div className="sidebar-section-label">Simulation Mode</div>
+        <div className="sidebar-nav">
+          {['patient', 'doctor', 'receptionist'].map(r => (
+            <button
+              key={r}
+              className={`sidebar-nav-item ${role === r ? 'active' : ''}`}
+              onClick={() => setRole(r)}
+            >
+              <span className="nav-icon">
+                {r === 'patient' ? '👤' : r === 'doctor' ? '🩺' : '🏥'}
+              </span>
+              {r.charAt(0).toUpperCase() + r.slice(1)} View
+            </button>
+          ))}
+        </div>
+
+        {/* Portal Navigation */}
+        <div className="sidebar-section-label">Navigation</div>
+        <nav className="sidebar-nav">
+          {(roleNav[role] || []).map(item => (
+            <button
+              key={item.id}
+              className={`sidebar-nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setActiveTab(item.id)}
+            >
+              <span className="nav-icon">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Footer User Card */}
+        <div className="sidebar-footer">
+          {/* Context selector */}
           {role === 'patient' && patients.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Active Patient Profile:</span>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', marginBottom: '4px' }}>Active Patient</label>
               <select 
                 value={activePatientId} 
                 onChange={e => setActivePatientId(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto' }}
+                style={{ 
+                  padding: '7px 10px', fontSize: '0.78rem', 
+                  background: 'rgba(255,255,255,0.06)', 
+                  border: '1px solid rgba(255,255,255,0.08)', 
+                  color: 'rgba(255,255,255,0.8)',
+                  borderRadius: '8px'
+                }}
               >
                 {patients.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id} style={{ background: '#1a1f36', color: '#fff' }}>{p.name}</option>
                 ))}
               </select>
             </div>
           )}
 
           {role === 'doctor' && doctors.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ color: 'var(--text-secondary)' }}>Active Optometrist Profile:</span>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.65rem', marginBottom: '4px' }}>Active Optometrist</label>
               <select 
                 value={activeDoctorId} 
                 onChange={e => setActiveDoctorId(e.target.value)}
-                style={{ padding: '4px 8px', fontSize: '0.8rem', width: 'auto' }}
+                style={{ 
+                  padding: '7px 10px', fontSize: '0.78rem', 
+                  background: 'rgba(255,255,255,0.06)', 
+                  border: '1px solid rgba(255,255,255,0.08)', 
+                  color: 'rgba(255,255,255,0.8)',
+                  borderRadius: '8px'
+                }}
               >
                 {doctors.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
+                  <option key={d.id} value={d.id} style={{ background: '#1a1f36', color: '#fff' }}>{d.name}</option>
                 ))}
               </select>
             </div>
           )}
 
-          {/* Theme Toggle Button */}
-          <button 
-            onClick={toggleTheme}
-            style={{
-              background: 'var(--bg-primary)',
-              border: '1px solid var(--border-color)',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              color: 'var(--text-primary)',
-              fontSize: '0.8rem',
+          <div className="sidebar-user-card">
+            <div className="sidebar-user-avatar">{getInitials(getCurrentUserName())}</div>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">{getCurrentUserName()}</div>
+              <div className="sidebar-user-role">{role}</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ==================== MAIN CONTENT ==================== */}
+      <div className="main-content">
+        
+        {/* Top Bar */}
+        <header className="top-bar">
+          <div className="top-bar-left">
+            <h2>{getPageTitle()}</h2>
+            <p>{getPageSubtitle()}</p>
+          </div>
+          <div className="top-bar-right">
+            <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+            <div style={{ 
+              padding: '6px 14px', 
+              borderRadius: '8px', 
+              background: 'var(--success-bg)', 
+              color: 'var(--success)', 
+              fontSize: '0.72rem', 
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
-            }}
-          >
-            {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Clinic Container */}
-      <div style={{ flex: 1, padding: '32px 20px', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
-        
-        {/* Main Branding Header */}
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-          <div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 800, background: 'linear-gradient(135deg, var(--accent-primary) 0%, var(--info) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em' }}>
-              OptiCare Clinic System
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '2px' }}>Professional Refraction & Scheduling Web Portal</p>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Status: ONLINE-FIRST</span>
-            <span>Local Database Mock Active</span>
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }}></span>
+              Online
+            </div>
           </div>
         </header>
 
-        {/* Dynamic Portal Router Panel */}
-        <main className="glass-panel" style={{ padding: '32px', minHeight: '500px' }}>
+        {/* Content Area */}
+        <main className="content-body">
           {role === 'patient' && currentPatient ? (
-            <PatientPortal patient={currentPatient} onRefreshTrigger={triggerRefresh} />
+            <PatientPortal 
+              patient={currentPatient} 
+              onRefreshTrigger={triggerRefresh} 
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
           ) : role === 'doctor' && currentDoctor ? (
-            <DoctorPortal doctor={currentDoctor} onRefreshTrigger={triggerRefresh} />
+            <DoctorPortal 
+              doctor={currentDoctor} 
+              onRefreshTrigger={triggerRefresh}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
           ) : role === 'receptionist' ? (
-            <ReceptionistPortal onRefreshTrigger={triggerRefresh} />
+            <ReceptionistPortal 
+              onRefreshTrigger={triggerRefresh}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+            />
           ) : (
-            <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-              Loading simulator workspace data...
+            <div className="empty-state">
+              <div className="empty-icon">⏳</div>
+              <p>Loading workspace data...</p>
             </div>
           )}
         </main>
+
+        {/* Footer */}
+        <footer className="app-footer">
+          OptiCare Vision Center &copy; 2026 &mdash; Professional Optical Clinic Management System
+        </footer>
       </div>
-
-      {/* Footer */}
-      <footer style={{ 
-        textAlign: 'center', 
-        padding: '24px', 
-        borderTop: '1px solid var(--border-color)', 
-        fontSize: '0.8rem', 
-        color: 'var(--text-muted)',
-        marginTop: 'auto'
-      }}>
-        OptiCare Vision Center &copy; 2026. Made for Solo Development Workspace demo.
-      </footer>
-
     </div>
   );
 }
