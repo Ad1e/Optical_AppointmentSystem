@@ -161,6 +161,26 @@ const seedData = {
       is_available: false,
       note: 'Optometry Conference'
     }
+  ],
+  records: [
+    {
+      id: 'rec-1',
+      patient_id: 'pat-1',
+      date: '2026-06-10',
+      type: 'Retinal Fundus Photography',
+      doctor: 'Dr. Sarah Santos, OD',
+      image_key: 'retinal_scan',
+      notes: 'Optic disc contour is sharp and well-defined. Normal cup-to-disc ratio. Macula is clear with no signs of exudates, hemorrhage, or microaneurysms. Symmetrical vascular patterns.'
+    },
+    {
+      id: 'rec-2',
+      patient_id: 'pat-1',
+      date: '2026-06-10',
+      type: 'Corneal Topography Mapping',
+      doctor: 'Dr. Sarah Santos, OD',
+      image_key: 'corneal_topography',
+      notes: 'Astigmatic map shows regular, symmetric hourglass pattern. Symmetrical curvature indexes. Corneal shape is suitable for standard refractive contact lenses.'
+    }
   ]
 };
 
@@ -169,7 +189,12 @@ const loadDB = () => {
   try {
     const data = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      if (!parsed.records) {
+        parsed.records = seedData.records;
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(parsed));
+      }
+      return parsed;
     }
   } catch (e) {
     console.error('Failed to load local storage', e);
@@ -198,6 +223,7 @@ export const getPatients = () => db.patients;
 export const getAppointments = () => db.appointments;
 export const getPrescriptions = () => db.prescriptions;
 export const getOverrides = () => db.schedule_overrides;
+export const getRecords = () => db.records || [];
 
 export const addPatient = (patient) => {
   const newPatient = {
@@ -208,6 +234,18 @@ export const addPatient = (patient) => {
   db.patients.push(newPatient);
   saveDB(db);
   return newPatient;
+};
+
+export const addRecord = (record) => {
+  const newRec = {
+    id: `rec-${Date.now()}`,
+    date: new Date().toISOString().split('T')[0],
+    ...record
+  };
+  db.records = db.records || [];
+  db.records.push(newRec);
+  saveDB(db);
+  return newRec;
 };
 
 export const updateAppointmentStatus = (appointmentId, status) => {

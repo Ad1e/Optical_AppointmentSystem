@@ -7,7 +7,6 @@ import ReceptionistPortal from './ReceptionistPortal';
 import { Icons } from './Icons';
 
 function App() {
-  const [theme, setTheme] = useState('dark');
   const [role, setRole] = useState('patient');
   
   const [patients, setPatients] = useState([]);
@@ -26,16 +25,6 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    if (nextTheme === 'dark') {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
-    }
-  };
-
   useEffect(() => {
     document.body.classList.add('dark-theme');
   }, []);
@@ -51,6 +40,7 @@ function App() {
       { id: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
       { id: 'book', icon: 'book', label: 'Book Appointment' },
       { id: 'prescriptions', icon: 'prescriptions', label: 'My Prescriptions' },
+      { id: 'records', icon: 'records', label: 'Medical Records' },
     ],
     doctor: [
       { id: 'appointments', icon: 'appointments', label: 'Consultations' },
@@ -126,6 +116,7 @@ function App() {
                 {item.id === 'dashboard' && <Icons.Dashboard />}
                 {item.id === 'book' && <Icons.Calendar />}
                 {item.id === 'prescriptions' && <Icons.Glasses />}
+                {item.id === 'records' && <Icons.Document />}
                 {item.id === 'appointments' && <Icons.Stethoscope />}
                 {item.id === 'overrides' && <Icons.Override />}
                 {item.id === 'walkin' && <Icons.WalkIn />}
@@ -168,10 +159,7 @@ function App() {
               </div>
             )}
 
-            {/* Theme Toggle */}
-            <button className="btn-icon" onClick={toggleTheme} title="Toggle theme">
-              {theme === 'dark' ? <Icons.Sun style={{ color: 'var(--accent-tertiary)' }} /> : <Icons.Moon />}
-            </button>
+
 
             {/* User Badge */}
             <div className="navbar-user-card">
@@ -199,9 +187,6 @@ function App() {
             <div>
               <h2 style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{getPageTitle()}</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '2px' }}>{getPageSubtitle()}</p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span className="badge badge-success badge-dot">System Mock Active</span>
             </div>
           </div>
         </div>
@@ -236,10 +221,7 @@ function App() {
           )}
         </main>
 
-        {/* Footer */}
-        <footer className="app-footer">
-          OptiCare Vision Center &copy; 2026 &mdash; Medical Refraction Scheduling Platform
-        </footer>
+
 
       </div>
     </div>

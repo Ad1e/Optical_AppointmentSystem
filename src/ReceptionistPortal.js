@@ -91,6 +91,10 @@ export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setAct
     return doc.working_hours[dayOfWeek] !== null;
   }).length;
 
+  const selectedDoc = doctors.find(d => d.id === selectedDocId);
+  const selectedDocDayOfWeek = new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  const selectedDocHours = selectedDoc?.working_hours?.[selectedDocDayOfWeek];
+
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
@@ -204,7 +208,7 @@ export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setAct
               </div>
             ) : (
               <div className="empty-state">
-                <div className="empty-icon">📋</div>
+                <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><Icons.Calendar style={{ width: '48px', height: '48px' }} /></div>
                 <p>No appointments scheduled for this date.</p>
               </div>
             )}
@@ -214,58 +218,150 @@ export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setAct
 
       {/* =================== WALK-IN REGISTRATION =================== */}
       {activeTab === 'walkin' && (
-        <div className="card card-accent card-padded animate-fade-in" style={{ maxWidth: '720px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>New Walk-in Patient</h3>
-            <button className="btn-secondary" onClick={() => setActiveTab('dashboard')} style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
-              ← Back
-            </button>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
+          
+          {/* Registration Form Card */}
+          <div className="card card-accent card-padded animate-fade-in" style={{ flex: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>New Walk-in Registration</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>Enter patient personal data and match schedule slots.</p>
+              </div>
+              <button className="btn-secondary" onClick={() => setActiveTab('dashboard')} style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
+                ← Back
+              </button>
+            </div>
+
+            {walkinError && <div className="alert alert-error" style={{ marginBottom: '20px' }}>⚠️ {walkinError}</div>}
+            {walkinSuccess && <div className="alert alert-success" style={{ marginBottom: '20px' }}>🎉 {walkinSuccess}</div>}
+
+            <form onSubmit={handleRegisterWalkin} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Group 1: Patient Profile */}
+              <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-primary)', marginBottom: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icons.User style={{ width: '16px', height: '16px' }} />
+                  Patient Profile
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div>
+                    <label>Full Name</label>
+                    <input type="text" placeholder="e.g. John Doe" value={walkinName} onChange={e => setWalkinName(e.target.value)} required />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label>Contact Number</label>
+                      <input type="tel" placeholder="09XXXXXXXXX" value={walkinContact} onChange={e => setWalkinContact(e.target.value)} required />
+                    </div>
+                    <div>
+                      <label>Date of Birth</label>
+                      <input type="date" value={walkinDob} onChange={e => setWalkinDob(e.target.value)} required />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 2: Clinic & Slot setup */}
+              <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-secondary)', marginBottom: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Icons.Stethoscope style={{ width: '16px', height: '16px' }} />
+                  Appointment Setup
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <label>Choose Doctor</label>
+                    <select value={selectedDocId} onChange={e => setSelectedDocId(e.target.value)} required>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.id}>{d.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label>Consultation Type</label>
+                    <select value={walkinType} onChange={e => setWalkinType(e.target.value)}>
+                      <option value="walk_in">Walk-in Consultation</option>
+                      <option value="checkup">Routine Checkup</option>
+                      <option value="follow_up">Emergency Check</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label>Reason / Symptoms Description</label>
+                  <input type="text" placeholder="Blurry vision, frame replacement, contact lens review" value={walkinReason} onChange={e => setWalkinReason(e.target.value)} required />
+                </div>
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ padding: '14px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Icons.Calendar />
+                Register Patient & Auto-Assign Slot
+              </button>
+            </form>
           </div>
 
-          {walkinError && <div className="alert alert-error" style={{ marginBottom: '16px' }}>⚠️ {walkinError}</div>}
-          {walkinSuccess && <div className="alert alert-success" style={{ marginBottom: '16px' }}>🎉 {walkinSuccess}</div>}
-
-          <form onSubmit={handleRegisterWalkin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div>
-              <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-primary)', marginBottom: '14px', fontWeight: 700 }}>1. Patient Information</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                <div><label>Full Name</label><input type="text" placeholder="Firstname Lastname" value={walkinName} onChange={e => setWalkinName(e.target.value)} required /></div>
-                <div><label>Contact Number</label><input type="tel" placeholder="09xxxxxxxxx" value={walkinContact} onChange={e => setWalkinContact(e.target.value)} required /></div>
-                <div><label>Date of Birth</label><input type="date" value={walkinDob} onChange={e => setWalkinDob(e.target.value)} required /></div>
-              </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-              <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-primary)', marginBottom: '14px', fontWeight: 700 }}>2. Appointment Assignment</h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-                <div>
-                  <label>Choose Doctor</label>
-                  <select value={selectedDocId} onChange={e => setSelectedDocId(e.target.value)} required>
-                    {doctors.map(d => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.specialty})</option>
-                    ))}
-                  </select>
+          {/* Right Side: Doctor Status & Summary Info Panel */}
+          <div className="card card-padded animate-fade-in-delay-1" style={{ position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              Scheduling Assistant
+            </h3>
+            
+            {selectedDoc ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <img 
+                    src={selectedDoc.avatar} 
+                    alt={selectedDoc.name} 
+                    style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-primary)' }} 
+                  />
+                  <div>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700 }}>{selectedDoc.name}</h4>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>{selectedDoc.specialty}</p>
+                  </div>
                 </div>
-                <div>
-                  <label>Appointment Type</label>
-                  <select value={walkinType} onChange={e => setWalkinType(e.target.value)}>
-                    <option value="walk_in">Walk-in Consultation</option>
-                    <option value="checkup">Routine Checkup</option>
-                    <option value="follow_up">Emergency Check</option>
-                  </select>
+
+                <div className="divider" style={{ margin: '8px 0' }} />
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Selected Date:</span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{selectedDate}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Day of Week:</span>
+                    <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>{selectedDocDayOfWeek}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Practice Status:</span>
+                    {selectedDocHours ? (
+                      <span className="badge badge-success">On Duty</span>
+                    ) : (
+                      <span className="badge badge-error">Off Duty</span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Operating Hours:</span>
+                    <strong style={{ color: selectedDocHours ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {selectedDocHours ? `${selectedDocHours.start} - ${selectedDocHours.end}` : 'N/A'}
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Booked Slots today:</span>
+                    <span className="badge badge-info" style={{ fontWeight: 700 }}>
+                      {appointments.filter(a => a.doctor_id === selectedDocId && a.date === selectedDate).length} Slots
+                    </span>
+                  </div>
                 </div>
+                
+                {selectedDocHours && (
+                  <div style={{ background: 'var(--accent-gradient-soft)', padding: '12px', borderRadius: 'var(--radius-sm)', fontSize: '0.78rem', color: 'var(--text-secondary)', borderLeft: '3px solid var(--accent-primary)' }}>
+                    💡 Patient will be auto-assigned the first available <strong>{CLINIC_CONFIG.scheduling.slotDurationMinutes}-minute</strong> timeslot starting from <strong>{selectedDocHours.start}</strong>.
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Select a doctor to view schedule status details.</p>
+            )}
+          </div>
 
-            <div>
-              <label>Reason / Symptoms Description</label>
-              <input type="text" placeholder="Blurry vision, frame replacement, contact lens review" value={walkinReason} onChange={e => setWalkinReason(e.target.value)} required />
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ padding: '13px', fontSize: '0.95rem' }}>
-              Register & Assign Next Available Slot
-            </button>
-          </form>
         </div>
       )}
     </div>

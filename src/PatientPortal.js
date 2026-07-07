@@ -6,10 +6,13 @@ import {
   getPrescriptions, 
   addAppointment, 
   checkSlotAvailability, 
-  calculateNextCheckup 
+  calculateNextCheckup,
+  getRecords
 } from './db';
 import opticareBanner from './opticare_banner.png';
 import { Icons } from './Icons';
+import retinalScan from './retinal_scan.png';
+import cornealTopography from './corneal_topography.png';
 
 export default function PatientPortal({ patient, onRefreshTrigger, activeTab, setActiveTab }) {
   const [doctors, setDoctors] = useState([]);
@@ -25,11 +28,13 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
   const [bookingError, setBookingError] = useState('');
   const [bookingSuccess, setBookingSuccess] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [records, setRecords] = useState([]);
 
   useEffect(() => {
     setDoctors(getDoctors());
     setAppointments(getAppointments().filter(a => a.patient_id === patient.id));
     setPrescriptions(getPrescriptions().filter(p => p.patient_id === patient.id));
+    setRecords(getRecords().filter(r => r.patient_id === patient.id));
     if (getDoctors().length > 0) setSelectedDoctorId(getDoctors()[0].id);
   }, [patient, activeTab]);
 
@@ -454,6 +459,116 @@ export default function PatientPortal({ patient, onRefreshTrigger, activeTab, se
               <p>No prescriptions found on record.</p>
             </div>
           )}
+        </div>
+      )}
+      {/* =================== MEDICAL RECORDS TAB =================== */}
+      {activeTab === 'records' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="section-header">
+            <h3 className="section-title">Diagnostic Scans & Retinal Images</h3>
+            <span className="badge badge-info">{records.length} Scans Available</span>
+          </div>
+
+          {records.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {records.map((rec) => {
+                const imgSource = rec.image_key === 'retinal_scan' ? retinalScan : cornealTopography;
+
+                return (
+                  <div key={rec.id} className="card card-padded animate-fade-in" style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+                    gap: '24px',
+                    alignItems: 'center'
+                  }}>
+                    {/* Scan Information */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <span className="badge badge-success" style={{ marginBottom: '8px' }}>Verified Record</span>
+                        <h4 style={{ fontSize: '1.2rem', fontWeight: 800 }}>{rec.type}</h4>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: '2px' }}>
+                          Scan Date: <strong>{rec.date}</strong> | Doctor: <strong>{rec.doctor}</strong>
+                        </p>
+                      </div>
+
+                      <div style={{ 
+                        background: 'var(--bg-primary)', 
+                        padding: '16px', 
+                        borderRadius: 'var(--radius-md)', 
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.88rem',
+                        lineHeight: 1.5,
+                        color: 'var(--text-secondary)'
+                      }}>
+                        <strong style={{ display: 'block', color: 'var(--text-primary)', marginBottom: '6px', fontSize: '0.8rem', textTransform: 'uppercase' }}>Clinical Observations:</strong>
+                        {rec.notes}
+                      </div>
+                    </div>
+
+                    {/* Scan Image Container */}
+                    <div style={{ 
+                      position: 'relative',
+                      borderRadius: 'var(--radius-lg)',
+                      overflow: 'hidden',
+                      border: '1.5px solid var(--border-color)',
+                      boxShadow: 'var(--shadow-md)',
+                      background: '#040714',
+                      height: '240px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {/* Grid overlay for diagnostic aesthetic */}
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundImage: 'linear-gradient(rgba(129,140,248,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(129,140,248,0.05) 1px, transparent 1px)',
+                        backgroundSize: '20px 20px',
+                        pointerEvents: 'none',
+                        zIndex: 2
+                      }} />
+                      
+                      <img 
+                        src={imgSource} 
+                        alt={rec.type} 
+                        style={{ 
+                          width: '100%', 
+                          height: '100%', 
+                          objectFit: 'cover',
+                          opacity: 0.85
+                        }} 
+                      />
+
+                      {/* Diagnostic Overlay labels */}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '12px',
+                        left: '12px',
+                        background: 'rgba(10,14,26,0.75)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        color: 'var(--accent-tertiary)',
+                        fontFamily: 'monospace',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        zIndex: 3
+                      }}>
+                        SYS_REF // {rec.id.toUpperCase()}
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="card card-padded empty-state">
+              <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center' }}><Icons.Document style={{ width: '48px', height: '48px' }} /></div>
+              <p style={{ marginTop: '12px' }}>No medical scans or diagnostic images found on record.</p>
+            </div>
+          )}
+
         </div>
       )}
     </div>

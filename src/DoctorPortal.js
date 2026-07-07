@@ -7,9 +7,12 @@ import {
   addOverride, 
   removeOverride, 
   addPrescription, 
-  updateAppointmentStatus 
+  updateAppointmentStatus,
+  getRecords
 } from './db';
 import { Icons } from './Icons';
+import retinalScan from './retinal_scan.png';
+import cornealTopography from './corneal_topography.png';
 
 export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setActiveTab }) {
   const [patients, setPatients] = useState([]);
@@ -223,74 +226,116 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
 
       {/* =================== RX ENTRY FORM =================== */}
       {activeTab === 'appointments' && showRxForm && selectedPatient && (
-        <div className="card card-accent card-padded animate-fade-in" style={{ maxWidth: '900px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
-            <div>
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Refraction Sheet: {selectedPatient.name}</h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>DOB: {selectedPatient.dob} | Contact: {selectedPatient.contact}</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
+          
+          {/* Refraction Sheet Card */}
+          <div className="card card-accent card-padded animate-fade-in" style={{ flex: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Refraction Sheet: {selectedPatient.name}</h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>DOB: {selectedPatient.dob} | Contact: {selectedPatient.contact}</p>
+              </div>
+              <button className="btn-secondary" onClick={() => setShowRxForm(false)} style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
+                Cancel
+              </button>
             </div>
-            <button className="btn-secondary" onClick={() => setShowRxForm(false)} style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
-              Cancel
-            </button>
+
+            {rxSuccess && <div className="alert alert-success" style={{ marginBottom: '16px' }}>🎉 {rxSuccess}</div>}
+            {rxError && <div className="alert alert-error" style={{ marginBottom: '16px' }}>⚠️ {rxError}</div>}
+
+            <form onSubmit={handleSubmitRx} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Right Eye */}
+              <div style={{ border: '1.5px solid var(--border-color)', padding: '20px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-primary)' }}>
+                <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                  <span className="lens-diagram" style={{ width: '32px', height: '32px', fontSize: '0.65rem' }}>OD</span>
+                  Right Eye (Ocular Dexter)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
+                  <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.50" value={odSphere} onChange={e => setOdSphere(e.target.value)} required /></div>
+                  <div><label>Cylinder (CYL)</label><input type="text" placeholder="-0.50 / DS" value={odCylinder} onChange={e => setOdCylinder(e.target.value)} required /></div>
+                  <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="180" value={odAxis} onChange={e => setOdAxis(e.target.value)} required /></div>
+                  <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={odAdd} onChange={e => setOdAdd(e.target.value)} required /></div>
+                </div>
+              </div>
+
+              {/* Left Eye */}
+              <div style={{ border: '1.5px solid var(--border-color)', padding: '20px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-primary)' }}>
+                <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
+                  <span className="lens-diagram" style={{ width: '32px', height: '32px', fontSize: '0.65rem' }}>OS</span>
+                  Left Eye (Ocular Sinister)
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
+                  <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.25" value={osSphere} onChange={e => setOsSphere(e.target.value)} required /></div>
+                  <div><label>Cylinder (CYL)</label><input type="text" placeholder="DS" value={osCylinder} onChange={e => setOsCylinder(e.target.value)} required /></div>
+                  <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="0" value={osAxis} onChange={e => setOsAxis(e.target.value)} required /></div>
+                  <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={osAdd} onChange={e => setOsAdd(e.target.value)} required /></div>
+                </div>
+              </div>
+
+              {/* PD & Validity */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label>Pupillary Distance (PD) - mm</label>
+                  <input type="number" min={CLINIC_CONFIG.validationLimits.pd.min} max={CLINIC_CONFIG.validationLimits.pd.max} placeholder="63" value={pd} onChange={e => setPd(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Prescription Validity Period</label>
+                  <select value={validityMonths} onChange={e => setValidityMonths(e.target.value)}>
+                    {CLINIC_CONFIG.validityPeriods.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label>Special Instructions / Notes</label>
+                <textarea rows="3" placeholder="Progressive lenses, blue light coating, prism settings..." value={rxNotes} onChange={e => setRxNotes(e.target.value)} />
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ padding: '13px', fontSize: '0.95rem' }}>
+                Save Prescription Specs
+              </button>
+            </form>
           </div>
 
-          {rxSuccess && <div className="alert alert-success" style={{ marginBottom: '16px' }}>🎉 {rxSuccess}</div>}
-          {rxError && <div className="alert alert-error" style={{ marginBottom: '16px' }}>⚠️ {rxError}</div>}
-
-          <form onSubmit={handleSubmitRx} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Right Eye */}
-            <div style={{ border: '1.5px solid var(--border-color)', padding: '20px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-primary)' }}>
-              <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
-                <span className="lens-diagram" style={{ width: '32px', height: '32px', fontSize: '0.65rem' }}>OD</span>
-                Right Eye (Ocular Dexter)
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
-                <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.50" value={odSphere} onChange={e => setOdSphere(e.target.value)} required /></div>
-                <div><label>Cylinder (CYL)</label><input type="text" placeholder="-0.50 / DS" value={odCylinder} onChange={e => setOdCylinder(e.target.value)} required /></div>
-                <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="180" value={odAxis} onChange={e => setOdAxis(e.target.value)} required /></div>
-                <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={odAdd} onChange={e => setOdAdd(e.target.value)} required /></div>
+          {/* Right Column: Diagnostic Scans Preview */}
+          <div className="card card-padded animate-fade-in-delay-1" style={{ position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+              Patient Diagnostic Scans
+            </h3>
+            
+            {getRecords().filter(r => r.patient_id === selectedPatient.id).length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {getRecords().filter(r => r.patient_id === selectedPatient.id).map(rec => {
+                  const imgSource = rec.image_key === 'retinal_scan' ? retinalScan : cornealTopography;
+                  return (
+                    <div key={rec.id} style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px', background: 'var(--bg-primary)' }}>
+                      <p style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{rec.type}</p>
+                      <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Date: {rec.date}</p>
+                      
+                      <div style={{ position: 'relative', height: '120px', borderRadius: '4px', overflow: 'hidden', margin: '8px 0', border: '1px solid var(--border-color)', background: '#000' }}>
+                        <img src={imgSource} alt={rec.type} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div style={{ position: 'absolute', bottom: '4px', left: '4px', background: 'rgba(0,0,0,0.8)', color: '#fff', fontSize: '0.6rem', padding: '2px 4px', borderRadius: '2px', fontFamily: 'monospace' }}>
+                          {rec.id.toUpperCase()}
+                        </div>
+                      </div>
+                      
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                        "{rec.notes.substring(0, 100)}..."
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
-
-            {/* Left Eye */}
-            <div style={{ border: '1.5px solid var(--border-color)', padding: '20px', borderRadius: 'var(--radius-lg)', background: 'var(--bg-primary)' }}>
-              <h4 style={{ fontSize: '1rem', color: 'var(--accent-primary)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
-                <span className="lens-diagram" style={{ width: '32px', height: '32px', fontSize: '0.65rem' }}>OS</span>
-                Left Eye (Ocular Sinister)
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
-                <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.25" value={osSphere} onChange={e => setOsSphere(e.target.value)} required /></div>
-                <div><label>Cylinder (CYL)</label><input type="text" placeholder="DS" value={osCylinder} onChange={e => setOsCylinder(e.target.value)} required /></div>
-                <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="0" value={osAxis} onChange={e => setOsAxis(e.target.value)} required /></div>
-                <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={osAdd} onChange={e => setOsAdd(e.target.value)} required /></div>
+            ) : (
+              <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                <Icons.Document style={{ width: '32px', height: '32px', opacity: 0.3, marginBottom: '8px' }} />
+                <p style={{ fontSize: '0.82rem' }}>No clinical scans on record for this patient.</p>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* PD & Validity */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              <div>
-                <label>Pupillary Distance (PD) - mm</label>
-                <input type="number" min={CLINIC_CONFIG.validationLimits.pd.min} max={CLINIC_CONFIG.validationLimits.pd.max} placeholder="63" value={pd} onChange={e => setPd(e.target.value)} required />
-              </div>
-              <div>
-                <label>Prescription Validity Period</label>
-                <select value={validityMonths} onChange={e => setValidityMonths(e.target.value)}>
-                  {CLINIC_CONFIG.validityPeriods.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label>Special Instructions / Notes</label>
-              <textarea rows="3" placeholder="Progressive lenses, blue light coating, prism settings..." value={rxNotes} onChange={e => setRxNotes(e.target.value)} />
-            </div>
-
-            <button type="submit" className="btn-primary" style={{ padding: '13px', fontSize: '0.95rem' }}>
-              Save Prescription
-            </button>
-          </form>
         </div>
       )}
 
