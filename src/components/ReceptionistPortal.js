@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CLINIC_CONFIG } from './config';
+import { CLINIC_CONFIG } from '../config/config';
 import { 
   getPatients, 
   getAppointments, 
@@ -8,7 +8,7 @@ import {
   addAppointment, 
   updateAppointmentStatus,
   checkSlotAvailability 
-} from './db';
+} from '../database/db';
 import { Icons } from './Icons';
 
 export default function ReceptionistPortal({ onRefreshTrigger, activeTab, setActiveTab }) {

@@ -1,6 +1,6 @@
 // Simulated Database Layer for Optical Clinic System
 // Backed by localStorage to persist data across page reloads.
-import { CLINIC_CONFIG } from './config';
+import { CLINIC_CONFIG } from '../config/config';
 
 const LOCAL_STORAGE_KEY = 'optical_clinic_db_v1';
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CLINIC_CONFIG } from './config';
+import { CLINIC_CONFIG } from '../config/config';
 import { 
   getPatients, 
   getAppointments, 
@@ -9,10 +9,11 @@ import {
   addPrescription, 
   updateAppointmentStatus,
   getRecords
-} from './db';
+} from '../database/db';
 import { Icons } from './Icons';
-import retinalScan from './retinal_scan.png';
-import cornealTopography from './corneal_topography.png';
+
+const retinalScan = '/images/retinal_scan.png';
+const cornealTopography = '/images/corneal_topography.png';
 
 export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setActiveTab }) {
   const [patients, setPatients] = useState([]);

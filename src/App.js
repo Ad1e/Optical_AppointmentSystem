@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import './App.css';
-import { getPatients, getDoctors } from './db';
-import PatientPortal from './PatientPortal';
-import DoctorPortal from './DoctorPortal';
-import ReceptionistPortal from './ReceptionistPortal';
-import { Icons } from './Icons';
+import './styles/App.css';
+import { getPatients, getDoctors } from './database/db';
+import PatientPortal from './components/PatientPortal';
+import DoctorPortal from './components/DoctorPortal';
+import ReceptionistPortal from './components/ReceptionistPortal';
+import { Icons } from './components/Icons';
 
 function App() {
   const [role, setRole] = useState('patient');
