@@ -5,53 +5,53 @@
    ============================= */
 
 :root {
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #111827;
-  --bg-tertiary: #0f1629;
-  --bg-elevated: #1a2035;
-  --bg-sidebar: linear-gradient(180deg, #0d1117 0%, #090c14 100%);
+  --bg-primary: #FAF9F6;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f4f2ee;
+  --bg-elevated: #ffffff;
+  --bg-sidebar: #FAF9F6;
   
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
-  --text-on-dark: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-on-dark: #f8fafc;
   
-  --accent-primary: #818cf8;
-  --accent-secondary: #a78bfa;
-  --accent-tertiary: #67e8f9;
-  --accent-hover: #6366f1;
-  --accent-glow: rgba(129, 140, 248, 0.2);
-  --accent-gradient: linear-gradient(135deg, #818cf8 0%, #67e8f9 50%, #a78bfa 100%);
-  --accent-gradient-soft: linear-gradient(135deg, rgba(129,140,248,0.1) 0%, rgba(103,232,249,0.06) 100%);
+  --accent-primary: #0d9488;
+  --accent-secondary: #0f766e;
+  --accent-tertiary: #2dd4bf;
+  --accent-hover: #0f766e;
+  --accent-glow: rgba(13, 148, 136, 0.1);
+  --accent-gradient: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  --accent-gradient-soft: linear-gradient(135deg, rgba(13, 148, 136, 0.05) 0%, rgba(15, 118, 110, 0.02) 100%);
   
-  --border-color: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(129, 140, 248, 0.35);
-  --glass-bg: rgba(17, 24, 39, 0.9);
-  --glass-border: rgba(255, 255, 255, 0.06);
-  --card-bg: #151c2f;
+  --border-color: rgba(15, 118, 110, 0.12);
+  --border-hover: rgba(13, 148, 136, 0.35);
+  --glass-bg: rgba(250, 249, 246, 0.95);
+  --glass-border: rgba(15, 118, 110, 0.12);
+  --card-bg: #ffffff;
   
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.4);
-  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 0 80px rgba(129,140,248,0.04);
-  --shadow-xl: 0 24px 60px rgba(0,0,0,0.6);
+  --shadow-xs: 0 1px 2px rgba(15, 118, 110, 0.03);
+  --shadow-sm: 0 4px 12px rgba(15, 118, 110, 0.05);
+  --shadow-md: 0 8px 24px rgba(15, 118, 110, 0.08);
+  --shadow-lg: 0 16px 40px rgba(15, 118, 110, 0.1);
+  --shadow-xl: 0 24px 60px rgba(15, 118, 110, 0.15);
   
-  --success: #34d399;
-  --success-bg: rgba(52,211,153,0.1);
-  --warning: #fbbf24;
-  --warning-bg: rgba(251,191,36,0.1);
-  --error: #fb7185;
-  --error-bg: rgba(251,113,133,0.1);
-  --info: #60a5fa;
-  --info-bg: rgba(96,165,250,0.1);
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --info: #0d9488;
+  --info-bg: rgba(13, 148, 136, 0.1);
 
   --font-display: 'Outfit', -apple-system, sans-serif;
   --font-sans: 'Inter', -apple-system, sans-serif;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 24px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 26px;
 }
 
 /* ========== RESETS & GLOBALS ========== */
@@ -94,8 +94,8 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ========== NAVBAR ========== */
 .navbar {
-  background: var(--bg-sidebar);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -135,19 +135,19 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  box-shadow: 0 4px 16px rgba(91, 95, 199, 0.25);
+  box-shadow: 0 4px 16px var(--accent-glow);
 }
 
 .navbar-brand h1 {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--text-primary);
   letter-spacing: -0.03em;
 }
 
 .navbar-brand p {
   font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted);
   margin-top: 1px;
 }
 
@@ -166,7 +166,7 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--radius-md);
   font-size: 0.88rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
   cursor: pointer;
   border: none;
   background: transparent;
@@ -175,14 +175,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-nav-item:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  background: var(--accent-glow);
 }
 
 .navbar-nav-item.active {
-  color: #ffffff;
-  background: rgba(91, 95, 199, 0.15);
-  box-shadow: inset 0 0 0 1px rgba(91, 95, 199, 0.3);
+  color: var(--accent-secondary);
+  background: var(--accent-glow);
+  box-shadow: inset 0 0 0 1px var(--accent-primary);
 }
 
 .navbar-controls {
@@ -198,7 +198,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .navbar-selector label {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted);
   font-size: 0.65rem;
   margin: 0;
   text-transform: uppercase;
@@ -209,17 +209,17 @@ h1, h2, h3, h4, h5, h6 {
 .navbar-selector select {
   padding: 6px 12px;
   font-size: 0.8rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
   border-radius: var(--radius-sm);
   width: auto;
   cursor: pointer;
 }
 
 .navbar-selector select option {
-  background: #111528;
-  color: #ffffff;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .navbar-user-card {
@@ -228,8 +228,8 @@ h1, h2, h3, h4, h5, h6 {
   gap: 10px;
   padding: 6px 12px;
   border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
 }
 
 .navbar-user-avatar {
@@ -253,7 +253,7 @@ h1, h2, h3, h4, h5, h6 {
 .navbar-user-name {
   font-size: 0.8rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--text-primary);
   white-space: nowrap;
   max-width: 120px;
   overflow: hidden;
@@ -262,7 +262,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .navbar-user-role {
   font-size: 0.62rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted);
   text-transform: capitalize;
 }
 
@@ -893,4 +893,20 @@ button {
     overflow-x: auto;
     padding-bottom: 6px;
   }
+}
+
+/* ========== SKELETON LOADING ========== */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ========== ACTIVE SUB-TAB BUTTON ========== */
+.btn-active {
+  background: var(--accent-glow) !important;
+  color: var(--accent-primary) !important;
+  border: 1px solid var(--accent-primary) !important;
+  font-weight: 700 !important;
 }

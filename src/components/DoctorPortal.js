@@ -19,6 +19,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [overrides, setOverrides] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showRxForm, setShowRxForm] = useState(false);
@@ -46,9 +47,14 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
   const [overrideSuccess, setOverrideSuccess] = useState('');
 
   useEffect(() => {
-    setPatients(getPatients());
-    setAppointments(getAppointments().filter(a => a.doctor_id === doctor.id));
-    setOverrides(getOverrides().filter(o => o.doctor_id === doctor.id));
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setPatients(getPatients());
+      setAppointments(getAppointments().filter(a => a.doctor_id === doctor.id));
+      setOverrides(getOverrides().filter(o => o.doctor_id === doctor.id));
+      setLoading(false);
+    }, 450); // simulate async fetch latency
+    return () => clearTimeout(timer);
   }, [doctor, activeTab]);
 
   const handleOpenRxForm = (patientId, apptId = null) => {
@@ -138,7 +144,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Doctor Profile Header */}
-      <div className="card card-padded animate-fade-in" style={{ background: 'var(--accent-gradient-soft)' }}>
+      <div className="card card-padded animate-fade-in" style={{ background: 'var(--accent-gradient-soft)', border: '1px solid var(--border-color)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <img 
             src={doctor.avatar} alt={doctor.name} 
@@ -153,7 +159,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
 
       {/* =================== APPOINTMENTS TAB =================== */}
       {activeTab === 'appointments' && !showRxForm && (
-        <div className="card card-padded animate-fade-in">
+        <div className="card card-padded animate-fade-in" style={{ border: '1px solid var(--border-color)' }}>
           <div className="section-header">
             <h3 className="section-title">Assigned Consultations</h3>
             <input 
@@ -163,8 +169,14 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
             />
           </div>
 
-          {filteredAppointments.length > 0 ? (
-            <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+              {[1, 2, 3].map(i => (
+                <div key={i} className="skeleton" style={{ height: '48px', width: '100%', borderRadius: 'var(--radius-sm)' }} />
+              ))}
+            </div>
+          ) : filteredAppointments.length > 0 ? (
+            <div style={{ overflowX: 'auto', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginTop: '16px' }}>
               <table className="data-table">
                 <thead>
                   <tr>
@@ -180,6 +192,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
                       if (appt.status === 'attended') statusBadge = 'badge-success';
                       if (appt.status === 'cancelled') statusBadge = 'badge-error';
                       if (appt.status === 'checked-in') statusBadge = 'badge-warning';
+                      if (appt.status === 'no-show') statusBadge = 'badge-error';
 
                       return (
                         <tr key={appt.id}>
@@ -217,7 +230,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
               </table>
             </div>
           ) : (
-            <div className="empty-state">
+            <div className="empty-state" style={{ padding: '40px' }}>
               <div className="empty-icon">🩺</div>
               <p>No consultations found matching criteria.</p>
             </div>
@@ -230,10 +243,10 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
           
           {/* Refraction Sheet Card */}
-          <div className="card card-accent card-padded animate-fade-in" style={{ flex: 2 }}>
+          <div className="card card-accent card-padded animate-fade-in" style={{ flex: 2, border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
               <div>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 800 }}>Refraction Sheet: {selectedPatient.name}</h3>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Refraction Sheet: {selectedPatient.name}</h3>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>DOB: {selectedPatient.dob} | Contact: {selectedPatient.contact}</p>
               </div>
               <button className="btn-secondary" onClick={() => setShowRxForm(false)} style={{ padding: '7px 14px', fontSize: '0.82rem' }}>
@@ -252,10 +265,10 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
                   Right Eye (Ocular Dexter)
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
-                  <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.50" value={odSphere} onChange={e => setOdSphere(e.target.value)} required /></div>
-                  <div><label>Cylinder (CYL)</label><input type="text" placeholder="-0.50 / DS" value={odCylinder} onChange={e => setOdCylinder(e.target.value)} required /></div>
-                  <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="180" value={odAxis} onChange={e => setOdAxis(e.target.value)} required /></div>
-                  <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={odAdd} onChange={e => setOdAdd(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Sphere (SPH)</label><input type="text" placeholder="-2.50" value={odSphere} onChange={e => setOdSphere(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Cylinder (CYL)</label><input type="text" placeholder="-0.50 / DS" value={odCylinder} onChange={e => setOdCylinder(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="180" value={odAxis} onChange={e => setOdAxis(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Add (ADD)</label><input type="text" placeholder="+1.50" value={odAdd} onChange={e => setOdAdd(e.target.value)} required /></div>
                 </div>
               </div>
 
@@ -266,21 +279,21 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
                   Left Eye (Ocular Sinister)
                 </h4>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '14px' }}>
-                  <div><label>Sphere (SPH)</label><input type="text" placeholder="-2.25" value={osSphere} onChange={e => setOsSphere(e.target.value)} required /></div>
-                  <div><label>Cylinder (CYL)</label><input type="text" placeholder="DS" value={osCylinder} onChange={e => setOsCylinder(e.target.value)} required /></div>
-                  <div><label>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="0" value={osAxis} onChange={e => setOsAxis(e.target.value)} required /></div>
-                  <div><label>Add (ADD)</label><input type="text" placeholder="+1.50" value={osAdd} onChange={e => setOsAdd(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Sphere (SPH)</label><input type="text" placeholder="-2.25" value={osSphere} onChange={e => setOsSphere(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Cylinder (CYL)</label><input type="text" placeholder="DS" value={osCylinder} onChange={e => setOsCylinder(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Axis (°)</label><input type="number" min={CLINIC_CONFIG.validationLimits.axis.min} max={CLINIC_CONFIG.validationLimits.axis.max} placeholder="0" value={osAxis} onChange={e => setOsAxis(e.target.value)} required /></div>
+                  <div><label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Add (ADD)</label><input type="text" placeholder="+1.50" value={osAdd} onChange={e => setOsAdd(e.target.value)} required /></div>
                 </div>
               </div>
 
               {/* PD & Validity */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                 <div>
-                  <label>Pupillary Distance (PD) - mm</label>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Pupillary Distance (PD) - mm</label>
                   <input type="number" min={CLINIC_CONFIG.validationLimits.pd.min} max={CLINIC_CONFIG.validationLimits.pd.max} placeholder="63" value={pd} onChange={e => setPd(e.target.value)} required />
                 </div>
                 <div>
-                  <label>Prescription Validity Period</label>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Prescription Validity Period</label>
                   <select value={validityMonths} onChange={e => setValidityMonths(e.target.value)}>
                     {CLINIC_CONFIG.validityPeriods.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -290,7 +303,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
               </div>
 
               <div>
-                <label>Special Instructions / Notes</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Special Instructions / Notes</label>
                 <textarea rows="3" placeholder="Progressive lenses, blue light coating, prism settings..." value={rxNotes} onChange={e => setRxNotes(e.target.value)} />
               </div>
 
@@ -301,7 +314,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
           </div>
 
           {/* Right Column: Diagnostic Scans Preview */}
-          <div className="card card-padded animate-fade-in-delay-1" style={{ position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="card card-padded animate-fade-in-delay-1" style={{ position: 'sticky', top: '96px', display: 'flex', flexDirection: 'column', gap: '20px', border: '1px solid var(--border-color)' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
               Patient Diagnostic Scans
             </h3>
@@ -345,18 +358,18 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
           
           {/* Create Override */}
-          <div className="card card-accent card-padded animate-fade-in" style={{ height: 'fit-content' }}>
+          <div className="card card-accent card-padded animate-fade-in" style={{ height: 'fit-content', border: '1px solid var(--border-color)' }}>
             <h3 className="section-title" style={{ marginBottom: '20px' }}>Block Schedule Date</h3>
             
             {overrideSuccess && <div className="alert alert-success" style={{ marginBottom: '16px' }}>{overrideSuccess}</div>}
 
             <form onSubmit={handleCreateOverride} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label>Leave / Sick Date</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Leave / Sick Date</label>
                 <input type="date" min={new Date().toISOString().split('T')[0]} value={overrideDate} onChange={e => setOverrideDate(e.target.value)} required />
               </div>
               <div>
-                <label>Reason / Note</label>
+                <label style={{ fontSize: '0.78rem', fontWeight: 'bold' }}>Reason / Note</label>
                 <input type="text" placeholder="Vacation, seminar, clinic closed..." value={overrideNote} onChange={e => setOverrideNote(e.target.value)} required />
               </div>
               <button type="submit" className="btn-primary" style={{ padding: '11px' }}>
@@ -366,9 +379,15 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
           </div>
 
           {/* List Overrides */}
-          <div className="card card-padded animate-fade-in-delay-1">
+          <div className="card card-padded animate-fade-in-delay-1" style={{ border: '1px solid var(--border-color)' }}>
             <h3 className="section-title" style={{ marginBottom: '20px' }}>Active Calendar Blocks</h3>
-            {overrides.length > 0 ? (
+            {loading ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[1, 2].map(i => (
+                  <div key={i} className="skeleton" style={{ height: '56px', width: '100%', borderRadius: 'var(--radius-sm)' }} />
+                ))}
+              </div>
+            ) : overrides.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {overrides.map(ovr => (
                   <div key={ovr.id} style={{ 
@@ -388,7 +407,7 @@ export default function DoctorPortal({ doctor, onRefreshTrigger, activeTab, setA
                 ))}
               </div>
             ) : (
-              <div className="empty-state">
+              <div className="empty-state" style={{ padding: '40px' }}>
                 <div className="empty-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}><Icons.Override style={{ width: '48px', height: '48px' }} /></div>
                 <p>No blocked dates scheduled.</p>
               </div>

@@ -260,6 +260,7 @@ export const updateAppointmentStatus = (appointmentId, status) => {
 export const addOverride = (override) => {
   const newOverride = {
     id: `ovr-${Date.now()}`,
+    is_available: false,
     ...override
   };
   db.schedule_overrides.push(newOverride);
@@ -284,7 +285,7 @@ export const addPrescription = (prescription) => {
 };
 
 // Check if a specific slot is booked or blocked by an override/working hours
-export const checkSlotAvailability = (doctorId, dateStr, timeStr) => {
+export const checkSlotAvailability = (doctorId, dateStr, timeStr, excludeAppointmentId = null) => {
   const doc = db.doctors.find(d => d.id === doctorId);
   if (!doc) return { available: false, reason: 'Doctor not found' };
 
@@ -306,8 +307,9 @@ export const checkSlotAvailability = (doctorId, dateStr, timeStr) => {
     return { available: false, reason: `Outside working hours (${schedule.start} - ${schedule.end})` };
   }
 
-  // 3. Check existing appointments (excluding cancelled)
+  // 3. Check existing appointments (excluding cancelled and current appt)
   const isConflict = db.appointments.some(appt => 
+    appt.id !== excludeAppointmentId &&
     appt.doctor_id === doctorId && 
     appt.date === dateStr && 
     appt.start_time === timeStr && 
@@ -341,9 +343,9 @@ export const addAppointment = (appointment) => {
 
   const newAppt = {
     id: `apt-${Date.now()}`,
+    ...appointment,
     status: 'scheduled',
     end_time,
-    ...appointment
   };
 
   db.appointments.push(newAppt);
@@ -356,4 +358,31 @@ export const calculateNextCheckup = (dateIssued, validityMonths) => {
   const date = new Date(dateIssued);
   date.setMonth(date.getMonth() + parseInt(validityMonths));
   return date.toISOString().split('T')[0];
+};
+
+export const rescheduleAppointment = (appointmentId, newDate, newStartTime) => {
+  const app = db.appointments.find(a => a.id === appointmentId);
+  if (!app) throw new Error('Appointment not found');
+  
+  const check = checkSlotAvailability(app.doctor_id, newDate, newStartTime, appointmentId);
+  if (!check.available) {
+    throw new Error(check.reason || 'Time slot already booked');
+  }
+
+  const [hours, minutes] = newStartTime.split(':').map(Number);
+  let endMin = minutes + CLINIC_CONFIG.scheduling.slotDurationMinutes;
+  let endHour = hours;
+  if (endMin >= 60) {
+    const hoursAdded = Math.floor(endMin / 60);
+    endMin = endMin % 60;
+    endHour += hoursAdded;
+  }
+  const end_time = `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`;
+
+  app.date = newDate;
+  app.start_time = newStartTime;
+  app.end_time = end_time;
+  app.status = 'scheduled';
+  saveDB(db);
+  return app;
 };
